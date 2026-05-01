@@ -1,98 +1,116 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { useRouter } from "expo-router";
+import React, { useState } from "react";
+import { StatusBar, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import CalendarView from "../../components/CalendarView";
+import Header from "../../components/Header";
+import InfoBanner from "../../components/InfoBanner";
+import MenuButtons from "../../components/MenuButtons";
+import { Colors } from "../../constants/Colors";
+import { dailyMessages } from "../../constants/DailyMessages";
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  // 오늘 날짜 상태 관리
+  const [today] = useState(new Date());
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  const router = useRouter();
+
+  // 날짜 관련 데이터 계산
+  const month = (today.getMonth() + 1).toString();
+  const day = today.getDate().toString();
+  const dayOfWeek = today.getDay();
+  const calendarDate = today.toISOString().split("T")[0];
+
+  // 홈 화면에서 사용할 메뉴 구성
+  const HOME_MENU = ["장비 통계", "근무표", "전체 일정", "공지사항"];
+
+  // 버튼 클릭 이벤트 핸들러
+  const handleMenuPress = (item: string) => {
+    switch (item) {
+      case "장비 통계":
+        router.push("/statistics");
+        break;
+      case "근무표":
+        router.push("/schedule");
+        break;
+      case "전체 일정":
+        router.push("/plan");
+        break;
+      case "공지사항":
+        router.push("/notice");
+        break;
+      default:
+        console.log(`${item} 메뉴 클릭됨`);
+    }
+  };
+
+  return (
+    <SafeAreaView style={styles.safeArea} edges={["top", "right", "left"]}>
+      <StatusBar barStyle="dark-content" />
+
+      {/* 헤더바 */}
+      <Header />
+
+      <View style={styles.mainContainer}>
+        {/* 날짜 섹션 */}
+        <View style={styles.dateSection}>
+          <Text style={styles.dateTitle}>
+            {month}월 {day}일
+          </Text>
+          <Text style={styles.dateSubtitle}>{dailyMessages[dayOfWeek]}</Text>
+        </View>
+
+        {/* 안내 배너 */}
+        <InfoBanner text="VisionMate에 오신걸 환영합니다." />
+
+        <View style={styles.calendarContainer}>
+          <CalendarView selectedDate={calendarDate} />
+        </View>
+
+        <View style={styles.menuContainer}>
+          <MenuButtons items={HOME_MENU} onPress={handleMenuPress} />
+        </View>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  safeArea: {
+    flex: 1,
+    backgroundColor: Colors.light.background,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  mainContainer: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingBottom: 10,
+    backgroundColor: Colors.light.background,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  dateSection: {
+    marginTop: 10,
+    marginBottom: 5,
+  },
+  dateTitle: {
+    fontSize: 34,
+    fontWeight: "bold",
+    color: Colors.light.text,
+  },
+  dateSubtitle: {
+    fontSize: 20,
+    color: Colors.light.text,
+    marginTop: 4,
+    fontWeight: "500",
+  },
+  calendarContainer: {
+    flex: 1,
+    maxHeight: 380,
+    marginVertical: 10,
+    backgroundColor: Colors.light.background,
+  },
+  menuContainer: {
+    marginTop: "auto",
+    marginBottom: 5,
+    backgroundColor: Colors.light.background,
+    zIndex: 10,
   },
 });
