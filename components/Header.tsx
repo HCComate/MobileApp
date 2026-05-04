@@ -1,7 +1,7 @@
 import { Colors } from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native"; // Image 추가
 
 export default function Header() {
   return (
@@ -9,8 +9,18 @@ export default function Header() {
       <TouchableOpacity>
         <Ionicons name="menu" size={28} color={Colors.light.text} />
       </TouchableOpacity>
+      {/*
       <View style={styles.logoContainer}>
         <Ionicons name="eye" size={22} color={Colors.light.icon} />
+        <Text style={styles.logoText}>VisionMate</Text>
+      </View>
+      */}
+      <View style={styles.logoContainer}>
+        <Image
+          source={require("../assets/images/logo.png")}
+          style={styles.logoImage}
+          resizeMode="contain"
+        />
         <Text style={styles.logoText}>VisionMate</Text>
       </View>
       <TouchableOpacity>
@@ -36,6 +46,14 @@ const styles = StyleSheet.create({
   logoContainer: {
     flexDirection: "row",
     alignItems: "center",
+  },
+  logoImage: {
+    width: 28,
+    height: 28,
+    marginRight: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#EBF2FA",
   },
   logoText: {
     marginLeft: 6,
