@@ -18,12 +18,12 @@ import {
     View,
 } from "react-native";
 import {
-  EQ_COLORS,
-  SEVERITY_COLOR,
-  STATUS_COLOR,
-  STATUS_LABEL,
+    EQ_COLORS,
+    SEVERITY_COLOR,
+    STATUS_COLOR,
+    STATUS_LABEL,
 } from "../../../constants/equipmentConstants";
-import { deviceStore, subscribeToDeviceStore } from "../../../store/deviceStore";
+import { deviceStore } from "../../../store/deviceStore";
 import { DeviceDetail, StatusInfo } from "../../../types/equipment";
 
 const { width: SW } = Dimensions.get("window");
@@ -56,69 +56,47 @@ export default function DeviceDetailScreen() {
   //   } catch (e) { setDetail(null); }
   //   finally    { setLoading(false); }
   useEffect(() => {
-    let mounted = true;
+    const found = deviceStore.getDetail(deviceId);
+    if (found) {
+      setDetail(found);
+      setLoading(false);
+      return;
+    }
 
-    const refresh = () => {
-      if (!mounted) return;
-      console.debug("[DeviceDetail] refresh for", deviceId);
-      const found = deviceStore.getDetail(deviceId);
-      if (found) {
-        setDetail(found);
-        setLoading(false);
-        return;
-      }
+    // 세부정보가 없을 때는 목록 요약에서 임시로 보완하여 표시
+    const summary = deviceStore.get(deviceId);
+    if (summary) {
+      const partial: DeviceDetail = {
+        deviceId: summary.deviceId,
+        modelName: summary.modelName,
+        batchId: "UNKNOWN",
+        sequence: summary.lastSequence ?? 0,
+        machineStatus: summary.machineStatus,
+        temperature: 0,
+        vibrationX: 0,
+        vibrationY: 0,
+        illumination: 0,
+        humidity: 0,
+        timestamp: summary.timestamp,
+        statusInfos: [],
+        visionResult: {
+          result: (summary.visionResult ?? "OK") as any,
+          defectType: "",
+          confidence: 0,
+          inspectionArea: "",
+          imageUrl: null,
+        },
+      };
+      setDetail(partial);
+      setLoading(false);
+      return;
+    }
 
-      // 보조: 요약에서 최소 정보 보강
-      const summary = deviceStore.get(deviceId);
-      if (summary) {
-        const partial: DeviceDetail = {
-          deviceId: summary.deviceId,
-          modelName: summary.modelName,
-          batchId: "UNKNOWN",
-          sequence: summary.lastSequence ?? 0,
-          machineStatus: summary.machineStatus,
-          temperature: 0,
-          vibrationX: 0,
-          vibrationY: 0,
-          illumination: 0,
-          humidity: 0,
-          timestamp: summary.timestamp,
-          statusInfos: [],
-          visionResult: {
-            result: (summary.visionResult ?? "OK") as any,
-            defectType: "",
-            confidence: 0,
-            inspectionArea: "",
-            imageUrl: null,
-          },
-        };
-        setDetail(partial);
-        setLoading(false);
-        return;
-      }
-
-      // fallback: try again shortly in case store is still initializing
-      const timer = setTimeout(() => {
-        if (!mounted) return;
-        setDetail(deviceStore.getDetail(deviceId) ?? null);
-        setLoading(false);
-      }, 300);
-      return () => clearTimeout(timer);
-    };
-
-    // initial refresh
-    const cleanupTimer = refresh();
-
-    // subscribe to store changes so detail updates when store receives new data
-    const unsubscribe = subscribeToDeviceStore(() => {
-      refresh();
-    });
-
-    return () => {
-      mounted = false;
-      unsubscribe();
-      if (typeof cleanupTimer === "function") cleanupTimer();
-    };
+    const timer = setTimeout(() => {
+      setDetail(deviceStore.getDetail(deviceId) ?? null);
+      setLoading(false);
+    }, 300);
+    return () => clearTimeout(timer);
   }, [deviceId]);
 
   if (loading) {

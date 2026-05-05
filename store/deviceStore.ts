@@ -40,26 +40,22 @@ export const deviceStore = {
   setAll: (devices: DeviceSummary[]) => {
     summaryMap.clear();
     devices.forEach((d) => summaryMap.set(idOf(d), d));
-    notifySubscribers();
   },
 
   // 상세 목록 일괄 저장
   setAllDetails: (details: DeviceDetail[]) => {
     detailMap.clear();
     details.forEach((d) => detailMap.set(idOf(d), d));
-    notifySubscribers();
   },
 
   // 단일 요약 업데이트
   update: (device: DeviceSummary) => {
     summaryMap.set(idOf(device), device);
-    notifySubscribers();
   },
 
   // 단일 상세 저장/업데이트
   setDetail: (detail: DeviceDetail) => {
     detailMap.set(idOf(detail), detail);
-    notifySubscribers();
   },
 
   // 요약 조회
@@ -85,17 +81,4 @@ export const deviceStore = {
     }
     return found;
   },
-};
-
-// ---- simple pub/sub so components can react to store changes ----
-const subscribers = new Set<() => void>();
-const notifySubscribers = () => {
-  for (const s of Array.from(subscribers)) {
-    try { s(); } catch (e) { console.error('[deviceStore] subscriber error', e); }
-  }
-};
-
-export const subscribeToDeviceStore = (cb: () => void) => {
-  subscribers.add(cb);
-  return () => { subscribers.delete(cb); };
 };
