@@ -28,7 +28,7 @@ export default function HomeScreen() {
   const handleMenuPress = (item: string) => {
     switch (item) {
       case "장비 통계":
-        router.push("/equipment");
+        router.push("/statistics");
         break;
       case "근무표":
         router.push("/schedule");

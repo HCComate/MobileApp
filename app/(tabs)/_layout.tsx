@@ -37,7 +37,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="monitoring"
+        name="equipment/index"
         options={{
           title: "모니터링",
           tabBarIcon: ({ color }) => (
@@ -74,7 +74,6 @@ export default function TabLayout() {
         "log/device",
         "log/statesheet",
         "log/detail",
-        "equipment/index",
         "equipment/[deviceId]",
       ].map((name) => (
         <Tabs.Screen key={name} name={name} options={{ href: null }} />

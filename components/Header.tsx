@@ -1,7 +1,7 @@
 import { Colors } from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native"; // Image 추가
+import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function Header() {
   return (
