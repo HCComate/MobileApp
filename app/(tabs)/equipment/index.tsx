@@ -8,7 +8,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Dimensions,
   FlatList,
-  SafeAreaView,
+  // SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -17,6 +17,7 @@ import {
   View,
   ViewToken,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import {
   EQ_COLORS,
   SEVERITY_COLOR,
@@ -103,14 +104,14 @@ export default function EquipmentStatsScreen() {
   //     deviceStore.setDetail({ deviceId: raw.header.device_id, ... });
   //     handleIncomingData(summary);
   //   });
-  const handleIncomingData = useCallback((incoming: DeviceSummary) => {
-    if (!activeWindowRef.current.has(incoming.deviceId)) return;
-    setDevices((prev) =>
-      prev.map((d) =>
-        d.deviceId === incoming.deviceId ? { ...d, ...incoming } : d,
-      ),
-    );
-  }, []);
+  // const handleIncomingData = useCallback((incoming: DeviceSummary) => {
+  //   if (!activeWindowRef.current.has(incoming.deviceId)) return;
+  //   setDevices((prev) =>
+  //     prev.map((d) =>
+  //       d.deviceId === incoming.deviceId ? { ...d, ...incoming } : d,
+  //     ),
+  //   );
+  // }, []);
 
   const totalPages = Math.max(1, Math.ceil(devices.length / GRID_PAGE_SIZE));
   const pageDevices = devices.slice(
