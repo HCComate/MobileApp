@@ -67,7 +67,6 @@ export default function TabLayout() {
         "plan",
         "notice",
         "schedule",
-        "statistics",
         "log/all",
         "log/event",
         "log/error",
@@ -75,6 +74,11 @@ export default function TabLayout() {
         "log/statesheet",
         "log/detail",
         "equipment/[deviceId]",
+        "statistics/index",
+        "statistics/daily",
+        "statistics/weekly",
+        "statistics/monthly",
+        "statistics/yearly",
       ].map((name) => (
         <Tabs.Screen key={name} name={name} options={{ href: null }} />
       ))}
