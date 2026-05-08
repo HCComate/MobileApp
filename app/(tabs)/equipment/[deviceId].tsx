@@ -6,22 +6,23 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Dimensions,
-    Image,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Dimensions,
+  Image,
+  // SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import {
-    EQ_COLORS,
-    SEVERITY_COLOR,
-    STATUS_COLOR,
-    STATUS_LABEL,
+  EQ_COLORS,
+  SEVERITY_COLOR,
+  STATUS_COLOR,
+  STATUS_LABEL,
 } from "../../../constants/equipmentConstants";
 import { deviceStore } from "../../../store/deviceStore";
 import { DeviceDetail, StatusInfo } from "../../../types/equipment";

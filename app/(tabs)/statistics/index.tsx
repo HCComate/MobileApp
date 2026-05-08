@@ -1,3 +1,6 @@
+import Header from "@/components/Header";
+import { Colors } from "@/constants/Colors";
+import { Fonts } from "@/constants/Fonts";
 import Constants from "expo-constants";
 import { Href, Stack, useRouter } from "expo-router";
 import React from "react";
@@ -10,12 +13,10 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Header from "../../../components/Header";
-import { Colors } from "../../../constants/Colors";
 
 const { height } = Dimensions.get("window");
 
-export default function LogMainMenu() {
+export default function StatisticsMainScreen() {
   // 라우터 설정
   const router = useRouter();
   // 앱 버전
@@ -27,15 +28,13 @@ export default function LogMainMenu() {
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false,
   });
 
-  const LOG_MENUS = [
-    { title: "전체 로그 보기", path: "/log/all" as Href },
-    { title: "이벤트 로그 보기", path: "/log/event" as Href },
-    { title: "오류 로그 보기", path: "/log/error" as Href },
-    { title: "장비별 로그 보기", path: "/log/device" as Href },
-    { title: "로그 식별표", path: "/log/statesheet" as Href },
+  const STAT_MENUS = [
+    { title: "일일 통계 보기", path: "/statistics/daily" as Href },
+    { title: "주간 통계 보기", path: "/statistics/weekly" as Href },
+    { title: "월간 통계 보기", path: "/statistics/monthly" as Href },
+    { title: "연간 통계 보기", path: "/statistics/yearly" as Href },
   ];
 
   return (
@@ -48,11 +47,11 @@ export default function LogMainMenu() {
         contentContainerStyle={styles.contentContainer}
       >
         <View style={styles.titleBanner}>
-          <Text style={styles.bannerText}>장비 로그 보기</Text>
+          <Text style={styles.bannerText}>장비 검사 통계</Text>
         </View>
 
         <View style={styles.menuGrid}>
-          {LOG_MENUS.map((menu, index) => (
+          {STAT_MENUS.map((menu, index) => (
             <TouchableOpacity
               key={index}
               style={styles.menuButton}
@@ -78,19 +77,27 @@ export default function LogMainMenu() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: Colors.light.background },
+  safeArea: {
+    flex: 1,
+    backgroundColor: Colors.light.background,
+  },
   container: { flex: 1 },
   contentContainer: {
     paddingBottom: 40,
     minHeight: height * 0.8,
   },
   titleBanner: {
-    backgroundColor: "#1D1D5A",
+    backgroundColor: Colors.light.brandDark,
     paddingVertical: 25,
     alignItems: "center",
     marginBottom: 20,
   },
-  bannerText: { fontSize: 22, fontWeight: "bold", color: "#FFFFFF" },
+  bannerText: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    fontFamily: Fonts.sans,
+  },
   menuGrid: { paddingHorizontal: 20, gap: 15 },
   menuButton: {
     backgroundColor: "#4A4A6A",
@@ -112,6 +119,7 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     textAlign: "center",
     flex: 1,
+    fontFamily: Fonts.sans,
   },
   arrowText: {
     fontSize: 24,
@@ -133,6 +141,6 @@ const styles = StyleSheet.create({
   versionText: {
     fontSize: 12,
     color: "#AAA",
-    textAlign: "center",
+    fontFamily: Fonts.sans,
   },
 });
