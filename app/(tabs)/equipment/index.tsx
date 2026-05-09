@@ -235,10 +235,19 @@ export default function EquipmentStatsScreen() {
         backgroundColor={EQ_COLORS.headerBg}
       />
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.push("/");
+            }
+          }}
+        >
           <Text style={styles.backBtnText}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>장비 통계</Text>
+        <Text style={styles.headerTitle}>장비 모니터링</Text>
         <View style={{ width: 40 }} />
       </View>
       <View style={styles.actionBar}>

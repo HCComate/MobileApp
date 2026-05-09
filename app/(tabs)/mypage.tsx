@@ -1,4 +1,5 @@
 import Header from "@/components/Header";
+import { Colors } from "@/constants/Colors";
 import { MOCK_USER_DATA } from "@/mock/userData";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -51,6 +52,7 @@ export default function MyPage() {
     <SafeAreaView style={styles.safeArea} edges={["top", "right", "left"]}>
       <Header />
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        {/* 계정 및 권한 */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>계정 및 권한</Text>
           <View style={styles.accountBox}>
@@ -63,7 +65,7 @@ export default function MyPage() {
               <Text style={styles.label}>권한</Text>
               <Text style={styles.value}>{userData.role}</Text>
               <Text style={styles.label}>만료일</Text>
-              <Text style={styles.value}>{userData.expiryDate}.</Text>
+              <Text style={styles.value}>{userData.expiryDate}</Text>
             </View>
             <TouchableOpacity style={styles.logoutButton}>
               <Text style={styles.logoutText}>로그아웃</Text>
@@ -71,7 +73,7 @@ export default function MyPage() {
             </TouchableOpacity>
           </View>
         </View>
-
+        {/* 알림 */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>알림</Text>
           <View style={styles.rowBetween}>
@@ -79,7 +81,10 @@ export default function MyPage() {
             <Switch
               value={isPushEnabled}
               onValueChange={setIsPushEnabled}
-              trackColor={{ false: "#767577", true: "#3055C1" }}
+              trackColor={{
+                false: "#CBD5E1",
+                true: "#3055C1",
+              }}
             />
           </View>
           <Text style={styles.descriptionText}>
@@ -87,6 +92,7 @@ export default function MyPage() {
           </Text>
         </View>
 
+        {/* 네트워크 */}
         <View style={styles.section}>
           <View style={styles.rowBetween}>
             <Text style={styles.sectionTitle}>네트워크</Text>
@@ -108,6 +114,8 @@ export default function MyPage() {
             style={styles.input}
             value={serverIp}
             onChangeText={setServerIp}
+            placeholder="192.168.0.1"
+            placeholderTextColor="#94A3B8"
           />
 
           <Text style={styles.inputLabel}>포트 번호</Text>
@@ -116,15 +124,18 @@ export default function MyPage() {
             value={port}
             onChangeText={setPort}
             keyboardType="numeric"
+            placeholder="8080"
+            placeholderTextColor="#94A3B8"
           />
-
           <Text style={styles.inputLabel}>갱신 주기</Text>
           <View style={styles.inputWrapper}>
             <TextInput
-              style={[styles.input, { flex: 1, marginBottom: 0 }]}
+              style={[styles.input, styles.intervalInput]}
               value={refreshInterval}
               onChangeText={setRefreshInterval}
               keyboardType="numeric"
+              placeholder="1000"
+              placeholderTextColor="#94A3B8"
             />
             <Text style={styles.unitText}>ms</Text>
           </View>
@@ -146,22 +157,22 @@ export default function MyPage() {
           </TouchableOpacity>
         </View>
 
+        {/* 운영 */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>운영</Text>
           <TouchableOpacity
             style={styles.rowBetween}
             onPress={() => router.push("/management")}
           >
-            <View>
+            <View style={{ flex: 1 }}>
               <Text style={styles.itemTitle}>작업자 관리</Text>
               <Text style={styles.descriptionText}>
                 소속 작업자의 권한 및 근태를 관리할 수 있습니다.
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={24} color="#CCC" />
+            <Ionicons name="chevron-forward" size={24} color="#CBD5E1" />
           </TouchableOpacity>
         </View>
-
         <View style={{ height: 120 }} />
       </ScrollView>
     </SafeAreaView>
@@ -169,89 +180,153 @@ export default function MyPage() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#FFFFFF" },
-  container: { flex: 1, paddingHorizontal: 20 },
-  section: { marginTop: 25 },
+  safeArea: {
+    flex: 1,
+    backgroundColor: Colors.light.background,
+  },
+  container: {
+    flex: 1,
+    paddingHorizontal: 20,
+    backgroundColor: Colors.light.background,
+  },
+  section: {
+    marginTop: 28,
+  },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: "bold",
-    color: "#1D1D5A",
-    marginBottom: 15,
+    fontWeight: "700",
+    color: Colors.light.text,
+    marginBottom: 16,
+    letterSpacing: -0.3,
   },
   accountBox: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 18,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  welcomeText: { fontSize: 16, color: "#11181C" },
+  welcomeText: {
+    fontSize: 15,
+    color: "#64748B",
+  },
   userName: {
-    fontSize: 18,
-    fontWeight: "bold",
+    fontSize: 20,
+    fontWeight: "700",
     color: "#3055C1",
-    marginVertical: 4,
+    marginTop: 2,
+    marginBottom: 10,
   },
-  nim: { color: "#11181C", fontWeight: "normal" },
-  label: { fontSize: 13, color: "#999999", marginTop: 8 },
-  value: { fontSize: 15, color: "#11181C", marginTop: 2 },
+  nim: {
+    color: Colors.light.text,
+    fontWeight: "400",
+  },
+  label: {
+    fontSize: 13,
+    color: "#94A3B8",
+    marginTop: 8,
+  },
+  value: {
+    fontSize: 15,
+    color: Colors.light.text,
+    marginTop: 2,
+    fontWeight: "500",
+  },
   logoutButton: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#A57373",
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 6,
+    borderRadius: 8,
   },
-  logoutText: { color: "#FFF", marginRight: 5, fontSize: 13 },
+  logoutText: {
+    color: "#FFF",
+    marginRight: 5,
+    fontSize: 13,
+    fontWeight: "600",
+  },
   rowBetween: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  itemTitle: { fontSize: 16, fontWeight: "600", color: "#11181C" },
+  itemTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: Colors.light.text,
+  },
   descriptionText: {
     fontSize: 13,
-    color: "#999999",
+    color: "#94A3B8",
     marginTop: 6,
     lineHeight: 18,
   },
-  statusText: { fontSize: 14, fontWeight: "bold" },
+  statusText: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
   inputLabel: {
     fontSize: 14,
     color: "#3055C1",
-    marginTop: 15,
+    marginTop: 18,
     marginBottom: 8,
     fontWeight: "700",
   },
   input: {
     borderBottomWidth: 1.5,
-    borderBottomColor: "#333",
+    borderBottomColor: "#CBD5E1",
     paddingVertical: 10,
     fontSize: 16,
-    color: "#11181C",
-    marginBottom: 5,
+    color: Colors.light.text,
+    backgroundColor: "transparent",
   },
-  inputWrapper: { flexDirection: "row", alignItems: "center" },
+  inputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  intervalInput: {
+    flex: 1,
+  },
   unitText: {
-    fontSize: 16,
-    color: "#11181C",
-    fontWeight: "bold",
+    fontSize: 15,
+    color: Colors.light.text,
+    fontWeight: "600",
     marginLeft: 10,
+    marginTop: 8,
   },
   connectButton: {
     backgroundColor: "#3055C1",
-    marginTop: 35,
+    marginTop: 36,
     paddingVertical: 18,
-    borderRadius: 8,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#1D1D5A",
+    shadowColor: "#3055C1",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  disabledButton: { backgroundColor: "#A0A0A0" },
+  disabledButton: {
+    backgroundColor: "#94A3B8",
+  },
   connectButtonText: {
     color: "#FFFFFF",
-    fontSize: 18,
-    fontWeight: "900",
+    fontSize: 17,
+    fontWeight: "700",
     textAlign: "center",
   },
 });
