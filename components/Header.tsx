@@ -1,6 +1,8 @@
 import { Colors } from "@/constants/Colors";
+import { MENU_GROUPS } from "@/constants/GoTo";
+import { PAGE_HELP_INFO } from "@/constants/HelpContent";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { usePathname, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   Dimensions,
@@ -18,48 +20,10 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const router = useRouter();
-
-  const menuGroups = [
-    {
-      title: "MONITORING",
-      items: [{ id: "equip-main", label: "장비 목록", path: "/equipment" }],
-    },
-    {
-      title: "LOGS",
-      items: [
-        { id: "log-all", label: "전체 로그", path: "/log/all" },
-        { id: "log-event", label: "이벤트 로그", path: "/log/event" },
-        { id: "log-error", label: "에러 로그", path: "/log/error" },
-        { id: "log-device", label: "장비별 로그", path: "/log/device" },
-        { id: "statesheet", label: "로그 식별표", path: "/log/statesheet" },
-      ],
-    },
-    {
-      title: "STATISTICS",
-      items: [
-        { id: "stat-daily", label: "일일 통계", path: "/statistics/daily" },
-        { id: "stat-weekly", label: "주간 통계", path: "/statistics/weekly" },
-        { id: "stat-monthly", label: "월간 통계", path: "/statistics/monthly" },
-        { id: "stat-yearly", label: "연간 통계", path: "/statistics/yearly" },
-      ],
-    },
-    {
-      title: "NOTICE",
-      items: [
-        { id: "schedule", label: "근무표", path: "/schedule" },
-        { id: "plan", label: "전체 일정", path: "/plan" },
-        { id: "notice", label: "공지사항", path: "/notice" },
-      ],
-    },
-    {
-      title: "SETTING",
-      items: [
-        { id: "mypage", label: "마이페이지", path: "/mypage" },
-        { id: "manage", label: "작업자 관리", path: "/management" },
-      ],
-    },
-  ];
+  const pathname = usePathname();
+  const currentHelp = PAGE_HELP_INFO[pathname] || PAGE_HELP_INFO.default;
 
   const navigateTo = (path: string) => {
     setIsMenuOpen(false);
@@ -81,7 +45,7 @@ export default function Header() {
         <Text style={styles.logoText}>VisionMate</Text>
       </View>
 
-      <TouchableOpacity>
+      <TouchableOpacity onPress={() => setIsHelpOpen(true)}>
         <Ionicons
           name="help-circle-outline"
           size={26}
@@ -107,7 +71,7 @@ export default function Header() {
               style={styles.menuScrollView}
               showsVerticalScrollIndicator={false}
             >
-              {menuGroups.map((group, idx) => (
+              {MENU_GROUPS.map((group, idx) => (
                 <View key={idx} style={styles.groupContainer}>
                   <Text style={styles.groupTitle}>{group.title}</Text>
                   <View style={styles.itemWrapper}>
@@ -130,6 +94,33 @@ export default function Header() {
             style={styles.outsideClose}
             onPress={() => setIsMenuOpen(false)}
           />
+        </View>
+      </Modal>
+
+      <Modal
+        visible={isHelpOpen}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsHelpOpen(false)}
+      >
+        <View style={styles.helpOverlay}>
+          <View style={styles.helpContent}>
+            <View style={styles.helpHeader}>
+              <Ionicons
+                name="information-circle"
+                size={22}
+                color={Colors.light.tint}
+              />
+              <Text style={styles.helpTitle}>{currentHelp.title}</Text>
+            </View>
+            <Text style={styles.helpDescription}>{currentHelp.desc}</Text>
+            <TouchableOpacity
+              style={styles.helpCloseButton}
+              onPress={() => setIsHelpOpen(false)}
+            >
+              <Text style={styles.helpCloseText}>닫기</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </Modal>
     </View>
@@ -216,5 +207,49 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#334155",
     fontWeight: "500",
+  },
+
+  helpOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 30,
+  },
+  helpContent: {
+    width: "85%",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 24,
+    alignItems: "center",
+    elevation: 10,
+  },
+  helpHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  helpTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#1e293b",
+    marginLeft: 8,
+  },
+  helpDescription: {
+    fontSize: 15,
+    color: "#64748b",
+    textAlign: "center",
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  helpCloseButton: {
+    backgroundColor: "#f1f5f9",
+    paddingVertical: 10,
+    paddingHorizontal: 30,
+    borderRadius: 10,
+  },
+  helpCloseText: {
+    color: "#475569",
+    fontWeight: "600",
   },
 });
