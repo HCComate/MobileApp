@@ -1,9 +1,4 @@
-// ─────────────────────────────────────────────
-//  app/(tabs)/equipment/[deviceId].tsx
-//  장비 상세 화면
-// ─────────────────────────────────────────────
-
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -18,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Header from "../../../components/Header";
 import {
   EQ_COLORS,
   SEVERITY_COLOR,
@@ -55,7 +51,7 @@ export default function DeviceDetailScreen() {
   //     deviceStore.setDetail(data);
   //     setDetail(data);
   //   } catch (e) { setDetail(null); }
-  //   finally    { setLoading(false); }
+  //   finally     { setLoading(false); }
   useEffect(() => {
     const found = deviceStore.getDetail(deviceId);
     if (found) {
@@ -131,13 +127,17 @@ export default function DeviceDetailScreen() {
   const imageUrl = detail.visionResult.imageUrl;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top", "right", "left"]}>
+      <Stack.Screen options={{ headerShown: false }} />
       <StatusBar
         barStyle="light-content"
         backgroundColor={EQ_COLORS.headerBg}
       />
 
-      {/* 헤더 */}
+      {/* 공통 헤더 추가 */}
+      <Header />
+
+      {/* 서브 헤더 (장비 상세 정보 및 뒤로가기) */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backBtn}

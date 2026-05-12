@@ -1,28 +1,24 @@
-// ─────────────────────────────────────────────
-//  app/(tabs)/equipment/index.tsx
-//  장비 통계 메인 화면
-// ─────────────────────────────────────────────
-
-import { useRouter } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-    Dimensions,
-    FlatList,
-    // SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-    ViewToken,
+  Dimensions,
+  FlatList,
+  // SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  ViewToken,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Header from "../../../components/Header";
 import {
-    EQ_COLORS,
-    SEVERITY_COLOR,
-    STATUS_COLOR,
-    STATUS_LABEL,
+  EQ_COLORS,
+  SEVERITY_COLOR,
+  STATUS_COLOR,
+  STATUS_LABEL,
 } from "../../../constants/equipmentConstants";
 import { deviceStore } from "../../../store/deviceStore";
 import { DeviceSummary } from "../../../types/equipment";
@@ -30,8 +26,8 @@ import { DeviceSummary } from "../../../types/equipment";
 // ⚠️ 테스트용 더미 데이터
 // TODO: 통신 연동 시 아래 import 제거 후 API 호출로 교체
 import {
-    generateMockDetails,
-    generateMockSummaries,
+  generateMockDetails,
+  generateMockSummaries,
 } from "../../../mock/deviceMocks";
 
 const { width: SW } = Dimensions.get("window");
@@ -229,11 +225,15 @@ export default function EquipmentStatsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top", "right", "left"]}>
+      <Stack.Screen options={{ headerShown: false }} />
       <StatusBar
         barStyle="light-content"
         backgroundColor={EQ_COLORS.headerBg}
       />
+
+      <Header />
+
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backBtn}
