@@ -3,7 +3,7 @@ import React from "react";
 import { FlatList, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "../../../components/Header";
-import { MOCK_RAW_LOGS } from "../../../mock/logs";
+import { MOCK_RAW_LOGS } from "../../../mock/rawLogs";
 
 export default function AllLogScreen() {
   const getStatusStyle = (item: (typeof MOCK_RAW_LOGS)[0]) => {
