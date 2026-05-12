@@ -6,9 +6,19 @@ let currentNotificationId: string | null = null;
 export async function ensureChannel() {
   if (Platform.OS !== "android") return;
   try {
-    await Notifications.setNotificationChannelAsync("visionmate", {
-      name: "visionMate",
-      importance: Notifications.AndroidImportance.MAX,
+    // 상태바 유지용 채널 (LOW → 팝업 없이 상태바에만 표시)
+    await Notifications.setNotificationChannelAsync("visionmate-persistent", {
+      name: "VisionMate 실행 중",
+      importance: Notifications.AndroidImportance.LOW,
+      vibrationPattern: undefined,
+      sound: undefined,
+      showBadge: false,
+    });
+
+    // 오류 알림용 채널 (HIGH → 팝업 표시)
+    await Notifications.setNotificationChannelAsync("visionmate-alert", {
+      name: "VisionMate 오류 알림",
+      importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 250, 250],
       sound: "default",
     });
@@ -22,30 +32,28 @@ export async function showPersistentNotification() {
   try {
     if (!currentNotificationId) {
       await ensureChannel();
-      // Android 13+ 런타임 권한 요청
       try {
         await Notifications.requestPermissionsAsync();
       } catch (e) {}
+
       console.log(
         "[foregroundNotification] presenting persistent notification",
       );
-      const id = await Notifications.presentNotificationAsync({
-        title: "visionMate 실행중",
-        body: "",
-        data: { visionMate: true },
-        android: {
-          channelId: "visionmate",
+
+      const id = await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "VisionMate 실행 중",
+          body: "공정 모니터링 중입니다. 탭하여 앱으로 이동",
+          data: { visionMate: true },
           sticky: true,
-          ongoing: true,
-          priority: Notifications.AndroidNotificationPriority.MAX,
-          vibrate: false,
         },
+        trigger: null,
       });
+
       currentNotificationId = id;
     }
   } catch (e) {
     console.warn("[foregroundNotification] show failed", e);
-    // 실패 시 무시
   }
 }
 
@@ -62,7 +70,6 @@ export async function hidePersistentNotification() {
     }
   } catch (e) {
     console.warn("[foregroundNotification] dismiss failed", e);
-    // 실패 시 무시
   }
 }
 
