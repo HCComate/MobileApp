@@ -1,9 +1,13 @@
 import { Colors } from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
+import React, { useState } from "react";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import HelpModal from "./HelpModal";
+import { usePathname } from "expo-router";
 
 export default function Header() {
+  const [helpVisible, setHelpVisible] = useState(false);
+  const pathname = usePathname?.() as string | undefined;
   return (
     <View style={styles.header}>
       <TouchableOpacity>
@@ -23,13 +27,14 @@ export default function Header() {
         />
         <Text style={styles.logoText}>VisionMate</Text>
       </View>
-      <TouchableOpacity>
+      <TouchableOpacity onPress={() => setHelpVisible(true)}>
         <Ionicons
           name="help-circle-outline"
           size={26}
           color={Colors.light.text}
         />
       </TouchableOpacity>
+      <HelpModal visible={helpVisible} onClose={() => setHelpVisible(false)} path={pathname} />
     </View>
   );
 }

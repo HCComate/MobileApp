@@ -3,7 +3,7 @@ import React from "react";
 import { FlatList, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "../../../components/Header";
-import { MOCK_RAW_LOGS } from "../../../mock/logs";
+import { MOCK_RAW_LOGS } from "../../../mock/rawLogs";
 
 export default function ErrorLogScreen() {
   // 오직 machine_status가 ERROR인 데이터만 필터링

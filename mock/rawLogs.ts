@@ -1,4 +1,197 @@
-export * from './rawLogs';
+// ─────────────────────────────────────────────
+//  mock/rawLogs.ts
+//  서버 Raw JSON 형식 통합 더미 데이터
+//
+//  원본 mock/logs.ts 대비 변경사항:
+//  1. sensor_data에 humidity 필드 추가
+//  2. header에 assigned_worker_id 필드 추가
+//  3. 데이터 건수 동일 유지 (30건)
+//  4. 기존 status_info code 값 그대로 유지
+//     (정상코드 "NORMAL", "SV-VS-PR-00" 등 원본 그대로)
+//
+//  담당자 배정 기준:
+//  RASP_PI_01,07 → 2111111 (한성)
+//  RASP_PI_02,06 → 2344751 (홍길동)
+//  RASP_PI_03,08 → 2744135 (김철수)
+//  RASP_PI_04,09 → 2844232 (박한수)
+//  RASP_PI_05    → 2744773 (최서울)
+//
+//  ⚠️ 테스트 전용
+//  TODO: 통신 연동 시 실제 서버 API 응답으로 교체
+// ─────────────────────────────────────────────
+
+export interface RawStatusInfo {
+  code: string;
+  msg: string;
+  severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  direction: string;
+  part_location: string;
+  is_capture_required: boolean;
+}
+
+export interface RawVisionResult {
+  result: "OK" | "NG";
+  defect_type: string;
+  confidence: number;
+  inspection_area: string;
+  image_url: string | null;
+}
+
+export interface RawSensorData {
+  temperature: number;
+  vibration_x: number;
+  vibration_y: number;
+  illumination: number;
+  humidity: number; // ← 추가된 필드
+}
+
+export interface RawLog {
+  header: {
+    device_id: string;
+    batch_id: string;
+    model_name: string;
+    assigned_worker_id: string; // ← 추가된 필드
+  };
+  body: {
+    sequence: number;
+    machine_status: "RUN" | "ERROR" | "IDLE" | "STOP";
+    status_info: RawStatusInfo[];
+    vision_result: RawVisionResult;
+    sensor_data: RawSensorData;
+    timestamp: string;
+  };
+}
+
+export const MOCK_RAW_LOGS: RawLog[] = [
+  {
+    header: {
+      device_id: "RASP_PI_01",
+      batch_id: "BATCH_003",
+      model_name: "SMT_CHIP_A20",
+      assigned_worker_id: "2111111",
+    },
+    body: {
+      sequence: 71,
+      machine_status: "RUN",
+      status_info: [
+        {
+          code: "NORMAL",
+          msg: "System Recovery Success",
+          severity: "LOW",
+          direction: "TOP",
+          part_location: "ZONE_ALL",
+          is_capture_required: false,
+        },
+      ],
+      vision_result: {
+        result: "OK",
+        defect_type: "NONE",
+        confidence: 0.99,
+        inspection_area: "ALL",
+        image_url: null,
+      },
+      sensor_data: {
+        temperature: 37.5,
+        vibration_x: 0.01,
+        vibration_y: 0.01,
+        illumination: 1250,
+        humidity: 44.2,
+      },
+      timestamp: "2026-05-01 17:45:10.001",
+    },
+  },
+  {
+    header: {
+      device_id: "RASP_PI_01",
+      batch_id: "BATCH_003",
+      model_name: "SMT_CHIP_A20",
+      assigned_worker_id: "2111111",
+    },
+    body: {
+      sequence: 70,
+      machine_status: "RUN",
+      status_info: [
+        {
+          code: "AN-CN-02",
+          msg: "WebSocket Reconnected",
+          severity: "MEDIUM",
+          direction: "NETWORK",
+          part_location: "MODEM_01",
+          is_capture_required: false,
+        },
+      ],
+      vision_result: {
+        result: "OK",
+        defect_type: "NONE",
+        confidence: 0.98,
+        inspection_area: "ALL",
+        image_url: null,
+      },
+      sensor_data: {
+        temperature: 38.2,
+        vibration_x: 0.01,
+        vibration_y: 0.01,
+        illumination: 1250,
+        humidity: 44.8,
+      },
+      timestamp: "2026-05-01 17:44:05.123",
+    },
+  },
+  {
+    header: {
+      device_id: "RASP_PI_02",
+      batch_id: "BATCH_003",
+      model_name: "SMT_CHIP_A20",
+      assigned_worker_id: "2344751",
+    },
+    body: {
+      sequence: 69,
+      machine_status: "ERROR",
+      status_info: [
+        {
+          code: "HM-PO-01",
+          msg: "Emergency Stop Pressed",
+          severity: "CRITICAL",
+          direction: "PANEL",
+          part_location: "STOP_BTN_01",
+          is_capture_required: false,
+        },
+      ],
+      vision_result: {
+        result: "NG",
+        defect_type: "STOP",
+        confidence: 1.0,
+        inspection_area: "ALL",
+        image_url: null,
+      },
+      sensor_data: {
+        temperature: 39.5,
+        vibration_x: 0.0,
+        vibration_y: 0.0,
+        illumination: 1250,
+        humidity: 45.0,
+      },
+      timestamp: "2026-05-01 17:42:12.441",
+    },
+  },
+  {
+    header: {
+      device_id: "RASP_PI_03",
+      batch_id: "BATCH_003",
+      model_name: "SMT_CHIP_A20",
+      assigned_worker_id: "2744135",
+    },
+    body: {
+      sequence: 68,
+      machine_status: "ERROR",
+      status_info: [
+        {
+          code: "SV-PR-41",
+          msg: "Component Missing Error",
+          severity: "CRITICAL",
+          direction: "TOP",
+          part_location: "ZONE_A1",
+          is_capture_required: true,
         },
       ],
       vision_result: {
@@ -13,6 +206,7 @@ export * from './rawLogs';
         vibration_x: 0.02,
         vibration_y: 0.02,
         illumination: 1200,
+        humidity: 46.3,
       },
       timestamp: "2026-05-01 17:40:05.005",
     },
@@ -22,6 +216,7 @@ export * from './rawLogs';
       device_id: "RASP_PI_06",
       batch_id: "BATCH_003",
       model_name: "SMT_CHIP_A20",
+      assigned_worker_id: "2344751",
     },
     body: {
       sequence: 67,
@@ -56,6 +251,7 @@ export * from './rawLogs';
         vibration_x: 0.12,
         vibration_y: 0.1,
         illumination: 1200,
+        humidity: 52.1,
       },
       timestamp: "2026-05-01 17:38:15.882",
     },
@@ -65,6 +261,7 @@ export * from './rawLogs';
       device_id: "RASP_PI_01",
       batch_id: "BATCH_003",
       model_name: "SMT_CHIP_A20",
+      assigned_worker_id: "2111111",
     },
     body: {
       sequence: 66,
@@ -91,6 +288,7 @@ export * from './rawLogs';
         vibration_x: 0.01,
         vibration_y: 0.01,
         illumination: 1250,
+        humidity: 44.5,
       },
       timestamp: "2026-05-01 17:35:05.001",
     },
@@ -100,6 +298,7 @@ export * from './rawLogs';
       device_id: "RASP_PI_08",
       batch_id: "BATCH_002",
       model_name: "SMT_CHIP_A20",
+      assigned_worker_id: "2744135",
     },
     body: {
       sequence: 65,
@@ -126,6 +325,7 @@ export * from './rawLogs';
         vibration_x: 0.01,
         vibration_y: 0.01,
         illumination: 1250,
+        humidity: 43.9,
       },
       timestamp: "2026-05-01 17:32:10.112",
     },
@@ -135,6 +335,7 @@ export * from './rawLogs';
       device_id: "RASP_PI_04",
       batch_id: "BATCH_002",
       model_name: "SMT_CHIP_A20",
+      assigned_worker_id: "2844232",
     },
     body: {
       sequence: 64,
@@ -161,6 +362,7 @@ export * from './rawLogs';
         vibration_x: 0.02,
         vibration_y: 0.02,
         illumination: 1200,
+        humidity: 45.7,
       },
       timestamp: "2026-05-01 17:30:12.771",
     },
@@ -170,6 +372,7 @@ export * from './rawLogs';
       device_id: "RASP_PI_01",
       batch_id: "BATCH_002",
       model_name: "SMT_CHIP_A20",
+      assigned_worker_id: "2111111",
     },
     body: {
       sequence: 63,
@@ -196,6 +399,7 @@ export * from './rawLogs';
         vibration_x: 0.01,
         vibration_y: 0.01,
         illumination: 1250,
+        humidity: 44.1,
       },
       timestamp: "2026-05-01 17:28:05.002",
     },
@@ -205,6 +409,7 @@ export * from './rawLogs';
       device_id: "RASP_PI_05",
       batch_id: "BATCH_002",
       model_name: "SMT_CHIP_A20",
+      assigned_worker_id: "2744773",
     },
     body: {
       sequence: 62,
@@ -231,6 +436,7 @@ export * from './rawLogs';
         vibration_x: 0.05,
         vibration_y: 0.04,
         illumination: 1000,
+        humidity: 46.2,
       },
       timestamp: "2026-05-01 17:25:55.332",
     },
@@ -240,6 +446,7 @@ export * from './rawLogs';
       device_id: "RASP_PI_01",
       batch_id: "BATCH_002",
       model_name: "SMT_CHIP_A20",
+      assigned_worker_id: "2111111",
     },
     body: {
       sequence: 61,
@@ -266,6 +473,7 @@ export * from './rawLogs';
         vibration_x: 0.02,
         vibration_y: 0.02,
         illumination: 1200,
+        humidity: 44.3,
       },
       timestamp: "2026-05-01 17:22:20.901",
     },
@@ -275,6 +483,7 @@ export * from './rawLogs';
       device_id: "RASP_PI_01",
       batch_id: "BATCH_002",
       model_name: "SMT_CHIP_A20",
+      assigned_worker_id: "2111111",
     },
     body: {
       sequence: 60,
@@ -301,6 +510,7 @@ export * from './rawLogs';
         vibration_x: 0.01,
         vibration_y: 0.01,
         illumination: 1250,
+        humidity: 44.6,
       },
       timestamp: "2026-05-01 17:20:10.005",
     },
@@ -310,6 +520,7 @@ export * from './rawLogs';
       device_id: "RASP_PI_02",
       batch_id: "BATCH_002",
       model_name: "SMT_CHIP_A20",
+      assigned_worker_id: "2344751",
     },
     body: {
       sequence: 59,
@@ -336,6 +547,7 @@ export * from './rawLogs';
         vibration_x: 0.01,
         vibration_y: 0.01,
         illumination: 1250,
+        humidity: 43.8,
       },
       timestamp: "2026-05-01 17:18:45.662",
     },
@@ -345,6 +557,7 @@ export * from './rawLogs';
       device_id: "RASP_PI_01",
       batch_id: "BATCH_002",
       model_name: "SMT_CHIP_A20",
+      assigned_worker_id: "2111111",
     },
     body: {
       sequence: 58,
@@ -371,6 +584,7 @@ export * from './rawLogs';
         vibration_x: 0.0,
         vibration_y: 0.0,
         illumination: 0,
+        humidity: 44.0,
       },
       timestamp: "2026-05-01 17:15:30.111",
     },
@@ -380,6 +594,7 @@ export * from './rawLogs';
       device_id: "RASP_PI_03",
       batch_id: "BATCH_002",
       model_name: "SMT_CHIP_A20",
+      assigned_worker_id: "2744135",
     },
     body: {
       sequence: 57,
@@ -406,6 +621,7 @@ export * from './rawLogs';
         vibration_x: 0.01,
         vibration_y: 0.01,
         illumination: 1250,
+        humidity: 44.4,
       },
       timestamp: "2026-05-01 17:12:05.001",
     },
@@ -415,6 +631,7 @@ export * from './rawLogs';
       device_id: "RASP_PI_01",
       batch_id: "BATCH_002",
       model_name: "SMT_CHIP_A20",
+      assigned_worker_id: "2111111",
     },
     body: {
       sequence: 56,
@@ -441,6 +658,7 @@ export * from './rawLogs';
         vibration_x: 0.05,
         vibration_y: 0.05,
         illumination: 1250,
+        humidity: 44.7,
       },
       timestamp: "2026-05-01 17:10:15.442",
     },
@@ -450,6 +668,7 @@ export * from './rawLogs';
       device_id: "RASP_PI_01",
       batch_id: "BATCH_002",
       model_name: "SMT_CHIP_A20",
+      assigned_worker_id: "2111111",
     },
     body: {
       sequence: 55,
@@ -476,6 +695,7 @@ export * from './rawLogs';
         vibration_x: 0.02,
         vibration_y: 0.02,
         illumination: 1100,
+        humidity: 45.1,
       },
       timestamp: "2026-05-01 17:08:50.123",
     },
@@ -485,6 +705,7 @@ export * from './rawLogs';
       device_id: "RASP_PI_07",
       batch_id: "BATCH_001",
       model_name: "SMT_CHIP_A20",
+      assigned_worker_id: "2111111",
     },
     body: {
       sequence: 54,
@@ -511,6 +732,7 @@ export * from './rawLogs';
         vibration_x: 0.01,
         vibration_y: 0.01,
         illumination: 1250,
+        humidity: 44.3,
       },
       timestamp: "2026-05-01 17:05:05.001",
     },
@@ -520,6 +742,7 @@ export * from './rawLogs';
       device_id: "RASP_PI_01",
       batch_id: "BATCH_001",
       model_name: "SMT_CHIP_A20",
+      assigned_worker_id: "2111111",
     },
     body: {
       sequence: 53,
@@ -546,6 +769,7 @@ export * from './rawLogs';
         vibration_x: 0.15,
         vibration_y: 0.12,
         illumination: 1250,
+        humidity: 45.3,
       },
       timestamp: "2026-05-01 17:02:40.887",
     },
@@ -555,6 +779,7 @@ export * from './rawLogs';
       device_id: "RASP_PI_01",
       batch_id: "BATCH_001",
       model_name: "SMT_CHIP_A20",
+      assigned_worker_id: "2111111",
     },
     body: {
       sequence: 52,
@@ -581,6 +806,7 @@ export * from './rawLogs';
         vibration_x: 0.03,
         vibration_y: 0.03,
         illumination: 1250,
+        humidity: 44.4,
       },
       timestamp: "2026-05-01 17:00:20.331",
     },
@@ -590,6 +816,7 @@ export * from './rawLogs';
       device_id: "RASP_PI_01",
       batch_id: "BATCH_001",
       model_name: "SMT_CHIP_A20",
+      assigned_worker_id: "2111111",
     },
     body: {
       sequence: 51,
@@ -616,6 +843,7 @@ export * from './rawLogs';
         vibration_x: 0.01,
         vibration_y: 0.01,
         illumination: 1250,
+        humidity: 43.9,
       },
       timestamp: "2026-05-01 16:58:15.005",
     },
@@ -625,6 +853,7 @@ export * from './rawLogs';
       device_id: "RASP_PI_01",
       batch_id: "BATCH_001",
       model_name: "SMT_CHIP_A20",
+      assigned_worker_id: "2111111",
     },
     body: {
       sequence: 50,
@@ -651,6 +880,7 @@ export * from './rawLogs';
         vibration_x: 0.0,
         vibration_y: 0.0,
         illumination: 0,
+        humidity: 48.2,
       },
       timestamp: "2026-05-01 16:55:10.992",
     },
@@ -660,6 +890,7 @@ export * from './rawLogs';
       device_id: "RASP_PI_01",
       batch_id: "BATCH_001",
       model_name: "SMT_CHIP_A20",
+      assigned_worker_id: "2111111",
     },
     body: {
       sequence: 49,
@@ -686,6 +917,7 @@ export * from './rawLogs';
         vibration_x: 0.01,
         vibration_y: 0.01,
         illumination: 1250,
+        humidity: 44.2,
       },
       timestamp: "2026-05-01 16:52:05.001",
     },
@@ -695,6 +927,7 @@ export * from './rawLogs';
       device_id: "RASP_PI_01",
       batch_id: "BATCH_001",
       model_name: "SMT_CHIP_A20",
+      assigned_worker_id: "2111111",
     },
     body: {
       sequence: 48,
@@ -721,6 +954,7 @@ export * from './rawLogs';
         vibration_x: 0.01,
         vibration_y: 0.01,
         illumination: 1250,
+        humidity: 45.5,
       },
       timestamp: "2026-05-01 16:50:45.123",
     },
@@ -730,6 +964,7 @@ export * from './rawLogs';
       device_id: "RASP_PI_09",
       batch_id: "BATCH_001",
       model_name: "SMT_CHIP_A20",
+      assigned_worker_id: "2844232",
     },
     body: {
       sequence: 47,
@@ -756,6 +991,7 @@ export * from './rawLogs';
         vibration_x: 0.02,
         vibration_y: 0.02,
         illumination: 1250,
+        humidity: 44.8,
       },
       timestamp: "2026-05-01 16:48:12.771",
     },
@@ -765,6 +1001,7 @@ export * from './rawLogs';
       device_id: "RASP_PI_02",
       batch_id: "BATCH_001",
       model_name: "SMT_CHIP_A20",
+      assigned_worker_id: "2344751",
     },
     body: {
       sequence: 46,
@@ -791,6 +1028,7 @@ export * from './rawLogs';
         vibration_x: 0.01,
         vibration_y: 0.01,
         illumination: 1250,
+        humidity: 44.5,
       },
       timestamp: "2026-05-01 16:45:05.001",
     },
@@ -800,6 +1038,7 @@ export * from './rawLogs';
       device_id: "RASP_PI_01",
       batch_id: "BATCH_001",
       model_name: "SMT_CHIP_A20",
+      assigned_worker_id: "2111111",
     },
     body: {
       sequence: 45,
@@ -826,6 +1065,7 @@ export * from './rawLogs';
         vibration_x: 0.0,
         vibration_y: 0.0,
         illumination: 1250,
+        humidity: 43.5,
       },
       timestamp: "2026-05-01 16:42:05.001",
     },
@@ -835,6 +1075,7 @@ export * from './rawLogs';
       device_id: "RASP_PI_01",
       batch_id: "BATCH_001",
       model_name: "SMT_CHIP_A20",
+      assigned_worker_id: "2111111",
     },
     body: {
       sequence: 44,
@@ -869,6 +1110,7 @@ export * from './rawLogs';
         vibration_x: 0.15,
         vibration_y: 0.12,
         illumination: 1200,
+        humidity: 55.2,
       },
       timestamp: "2026-04-10 19:35:20.555",
     },
@@ -878,6 +1120,7 @@ export * from './rawLogs';
       device_id: "RASP_PI_09",
       batch_id: "BATCH_001",
       model_name: "SMT_CHIP_A20",
+      assigned_worker_id: "2844232",
     },
     body: {
       sequence: 43,
@@ -904,6 +1147,7 @@ export * from './rawLogs';
         vibration_x: 0.02,
         vibration_y: 0.02,
         illumination: 1200,
+        humidity: 46.5,
       },
       timestamp: "2026-04-10 19:31:05.123",
     },
@@ -913,6 +1157,7 @@ export * from './rawLogs';
       device_id: "RASP_PI_01",
       batch_id: "BATCH_001",
       model_name: "SMT_CHIP_A20",
+      assigned_worker_id: "2111111",
     },
     body: {
       sequence: 42,
@@ -939,8 +1184,25 @@ export * from './rawLogs';
         vibration_x: 0.01,
         vibration_y: 0.01,
         illumination: 1250,
+        humidity: 44.2,
       },
       timestamp: "2026-04-10 19:30:00.001",
     },
   },
 ];
+
+// ── 헬퍼 함수 ─────────────────────────────────
+export const getDeviceIdsFromLogs = (): string[] => [
+  ...new Set(MOCK_RAW_LOGS.map((l) => l.header.device_id)),
+];
+
+export const getLatestLogByDevice = (deviceId: string): RawLog | undefined =>
+  MOCK_RAW_LOGS.filter((l) => l.header.device_id === deviceId).sort(
+    (a, b) => b.body.sequence - a.body.sequence,
+  )[0];
+
+export const getErrorLogs = (): RawLog[] =>
+  MOCK_RAW_LOGS.filter((l) => l.body.machine_status === "ERROR");
+
+export const getNormalLogs = (): RawLog[] =>
+  MOCK_RAW_LOGS.filter((l) => l.body.machine_status === "RUN");
