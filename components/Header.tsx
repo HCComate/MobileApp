@@ -1,9 +1,9 @@
 import { Colors } from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
+import { usePathname } from "expo-router";
 import React, { useState } from "react";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import HelpModal from "./HelpModal";
-import { usePathname } from "expo-router";
 
 export default function Header() {
   const [helpVisible, setHelpVisible] = useState(false);
@@ -34,7 +34,11 @@ export default function Header() {
           color={Colors.light.text}
         />
       </TouchableOpacity>
-      <HelpModal visible={helpVisible} onClose={() => setHelpVisible(false)} path={pathname} />
+      <HelpModal
+        visible={helpVisible}
+        onClose={() => setHelpVisible(false)}
+        path={pathname}
+      />
     </View>
   );
 }
