@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "../../../components/Header";
+import PageHeader from "../../../components/PageHeader";
 import { Colors } from "../../../constants/Colors";
 
 const { height } = Dimensions.get("window");
@@ -47,9 +48,8 @@ export default function LogMainMenu() {
         style={styles.container}
         contentContainerStyle={styles.contentContainer}
       >
-        <View style={styles.titleBanner}>
-          <Text style={styles.bannerText}>장비 로그 보기</Text>
-        </View>
+        <PageHeader title="장비 로그 보기" />
+        <View style={{ marginBottom: 30 }} />
 
         <View style={styles.menuGrid}>
           {LOG_MENUS.map((menu, index) => (
@@ -84,13 +84,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
     minHeight: height * 0.8,
   },
-  titleBanner: {
-    backgroundColor: "#1D1D5A",
-    paddingVertical: 25,
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  bannerText: { fontSize: 22, fontWeight: "bold", color: "#FFFFFF" },
+
   menuGrid: { paddingHorizontal: 20, gap: 15 },
   menuButton: {
     backgroundColor: "#4A4A6A",

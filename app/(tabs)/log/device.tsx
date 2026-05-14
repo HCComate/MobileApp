@@ -11,7 +11,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import DeviceIcon from "../../../components/DeviceIcon";
 import Header from "../../../components/Header";
+import PageHeader from "../../../components/PageHeader";
 import { MOCK_DEVICES } from "../../../mock/devices";
+import { PageStyles } from "../../../styles/PageStyles";
 
 const { width } = Dimensions.get("window");
 const COLUMN_COUNT = 4;
@@ -43,16 +45,14 @@ export default function DeviceLogScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "right", "left"]}>
+    <SafeAreaView style={PageStyles.safeArea} edges={["top", "right", "left"]}>
       {/* 중복 헤더 방지 */}
       <Stack.Screen options={{ headerShown: false }} />
 
       <Header />
 
-      <View style={styles.container}>
-        <View style={styles.pageHeader}>
-          <Text style={styles.headerTitle}>장비별 로그 보기</Text>
-        </View>
+      <View style={PageStyles.container}>
+        <PageHeader title="장비별 로그 보기" />
 
         {/* 장비 리스트 */}
         <FlatList
@@ -64,7 +64,7 @@ export default function DeviceLogScreen() {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>연결된 장비가 없습니다.</Text>
+              <Text style={PageStyles.emptyText}>연결된 장비가 없습니다.</Text>
             </View>
           }
         />
@@ -74,24 +74,6 @@ export default function DeviceLogScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-  },
-  container: {
-    flex: 1,
-  },
-  pageHeader: {
-    backgroundColor: "#1D1D5A",
-    paddingVertical: 15,
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#FFFFFF",
-  },
   listContent: {
     paddingHorizontal: 10,
     paddingBottom: 30,
@@ -105,9 +87,5 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     marginTop: 100,
-  },
-  emptyText: {
-    color: "#999",
-    fontSize: 16,
   },
 });

@@ -1,9 +1,12 @@
 import { Stack } from "expo-router";
 import React from "react";
-import { FlatList, StyleSheet, Text, View } from "react-native";
+import { FlatList, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "../../../components/Header";
+import PageHeader from "../../../components/PageHeader";
 import { MOCK_RAW_LOGS } from "../../../mock/rawLogs";
+import { LogStyles } from "../../../styles/LogStyles";
+import { PageStyles } from "../../../styles/PageStyles";
 
 export default function EventLogScreen() {
   // 정상인 로그 아닌 것만 필터링
@@ -37,34 +40,65 @@ export default function EventLogScreen() {
   const renderLogItem = ({ item }: { item: (typeof MOCK_RAW_LOGS)[0] }) => {
     const style = getStatusStyle(item);
     const info = item.body.status_info[0];
+    const [date, time] = item.body.timestamp.split(" ");
 
     return (
-      <View style={[styles.logRow, { backgroundColor: style.backgroundColor }]}>
-        <View style={styles.deviceCell}>
+      <View
+        style={[
+          LogStyles.logRow,
+          {
+            backgroundColor: style.backgroundColor,
+          },
+        ]}
+      >
+        <View style={LogStyles.deviceCell}>
           {/* 장비 ID 데이터 바인딩 */}
           <Text
             style={[
-              styles.cellText,
-              { color: style.textColor, fontWeight: "bold" },
+              LogStyles.cellText,
+              {
+                color: style.textColor,
+                fontWeight: "bold",
+              },
             ]}
           >
             {item.header.device_id}
           </Text>
         </View>
-        <View style={styles.timeCell}>
-          <Text style={[styles.timeText, { color: style.textColor }]}>
-            {item.body.timestamp.split(" ")[0]}
+
+        <View style={LogStyles.timeCell}>
+          <Text
+            style={[
+              LogStyles.timeText,
+              {
+                color: style.textColor,
+              },
+            ]}
+          >
+            {date}
           </Text>
-          <Text style={[styles.timeText, { color: style.textColor }]}>
-            {item.body.timestamp.split(" ")[1]}
+
+          <Text
+            style={[
+              LogStyles.timeText,
+              {
+                color: style.textColor,
+              },
+            ]}
+          >
+            {time}
           </Text>
         </View>
-        <View style={styles.msgCell}>
+
+        <View style={LogStyles.msgCell}>
           {/* 상태 메시지 데이터 바인딩 */}
           <Text
             style={[
-              styles.cellText,
-              { color: style.textColor, fontWeight: "600" },
+              LogStyles.cellText,
+              {
+                color: style.textColor,
+                fontWeight: "600",
+              },
             ]}
           >
             {info.msg}
@@ -75,17 +109,18 @@ export default function EventLogScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "right", "left"]}>
+    <SafeAreaView style={PageStyles.safeArea} edges={["top", "right", "left"]}>
       <Stack.Screen options={{ headerShown: false }} />
       <Header />
-      <View style={styles.container}>
-        <View style={styles.pageHeader}>
-          <Text style={styles.headerTitle}>이벤트 로그 보기</Text>
-        </View>
-        <View style={styles.columnHeader}>
-          <Text style={[styles.columnText, { flex: 0.8 }]}>장비</Text>
-          <Text style={[styles.columnText, { flex: 1.2 }]}>일시</Text>
-          <Text style={[styles.columnText, { flex: 2 }]}>기기 상태 내역</Text>
+
+      <View style={PageStyles.container}>
+        <PageHeader title="이벤트 로그 보기" />
+        <View style={LogStyles.columnHeader}>
+          <Text style={[LogStyles.columnText, { flex: 0.8 }]}>장비</Text>
+          <Text style={[LogStyles.columnText, { flex: 1.2 }]}>일시</Text>
+          <Text style={[LogStyles.columnText, { flex: 2 }]}>
+            기기 상태 내역
+          </Text>
         </View>
         <FlatList
           data={eventLogs}
@@ -97,39 +132,3 @@ export default function EventLogScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#FFFFFF" },
-  container: { flex: 1 },
-  pageHeader: {
-    backgroundColor: "#1D1D5A",
-    paddingVertical: 15,
-    alignItems: "center",
-  },
-  headerTitle: { fontSize: 18, fontWeight: "bold", color: "#FFFFFF" },
-  columnHeader: {
-    flexDirection: "row",
-    backgroundColor: "#4A4A6A",
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-  },
-  columnText: {
-    color: "#FFF",
-    fontWeight: "bold",
-    textAlign: "center",
-    fontSize: 14,
-  },
-  logRow: {
-    flexDirection: "row",
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.2)",
-    alignItems: "center",
-  },
-  deviceCell: { flex: 0.8, alignItems: "center" },
-  timeCell: { flex: 1.2, alignItems: "center" },
-  msgCell: { flex: 2, paddingLeft: 10 },
-  cellText: { fontSize: 14 },
-  timeText: { fontSize: 11 },
-});

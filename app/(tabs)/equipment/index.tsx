@@ -3,7 +3,6 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Dimensions,
   FlatList,
-  // SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -14,6 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "../../../components/Header";
+import PageHeader from "../../../components/PageHeader";
 import {
   EQ_COLORS,
   SEVERITY_COLOR,
@@ -234,22 +234,8 @@ export default function EquipmentStatsScreen() {
 
       <Header />
 
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => {
-            if (router.canGoBack()) {
-              router.back();
-            } else {
-              router.push("/");
-            }
-          }}
-        >
-          <Text style={styles.backBtnText}>‹</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>장비 모니터링</Text>
-        <View style={{ width: 40 }} />
-      </View>
+      <PageHeader title="장비 모니터링" />
+
       <View style={styles.actionBar}>
         <ScrollView
           horizontal

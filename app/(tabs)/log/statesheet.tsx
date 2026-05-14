@@ -3,6 +3,7 @@ import React from "react";
 import { FlatList, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "../../../components/Header";
+import { Colors } from "../../../constants/Colors";
 
 const ERROR_MASTER_DATA = [
   {
@@ -365,7 +366,7 @@ export default function StateSheetScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#FFFFFF" },
+  safeArea: { flex: 1, backgroundColor: Colors.light.background },
   container: { flex: 1 },
   pageHeader: {
     backgroundColor: "#1D1D5A",
