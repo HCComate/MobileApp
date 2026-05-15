@@ -4,7 +4,6 @@ import {
   ActivityIndicator,
   Dimensions,
   Image,
-  // SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,

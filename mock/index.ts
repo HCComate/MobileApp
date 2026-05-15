@@ -14,6 +14,5 @@
 
 export * from "./alertMocks";
 export * from "./deviceMocks";
-export * from "./rawLogs";
+export * from "./Logs";
 export * from "./workers";
-

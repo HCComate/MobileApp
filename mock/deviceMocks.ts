@@ -9,10 +9,7 @@
 // ─────────────────────────────────────────────
 
 import { DeviceDetail, DeviceSummary, StatusInfo } from "../types/equipment";
-import {
-    getDeviceIdsFromLogs,
-    getLatestLogByDevice
-} from "./rawLogs";
+import { getDeviceIdsFromLogs, getLatestLogByDevice } from "./Logs";
 
 // ─────────────────────────────────────────────
 //  RawLog → DeviceSummary 변환

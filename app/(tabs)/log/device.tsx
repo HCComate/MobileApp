@@ -1,5 +1,5 @@
 import { Stack, useRouter } from "expo-router";
-import React from "react";
+import React, { useMemo } from "react";
 import {
   Dimensions,
   FlatList,
@@ -12,8 +12,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import DeviceIcon from "../../../components/DeviceIcon";
 import Header from "../../../components/Header";
 import PageHeader from "../../../components/PageHeader";
-import { MOCK_DEVICES } from "../../../mock/devices";
+import { generateMockSummaries } from "../../../mock/deviceMocks";
 import { PageStyles } from "../../../styles/PageStyles";
+import { DeviceSummary } from "../../../types/equipment";
 
 const { width } = Dimensions.get("window");
 const COLUMN_COUNT = 4;
@@ -22,25 +23,30 @@ const ITEM_SIZE = (width - 40) / COLUMN_COUNT;
 export default function DeviceLogScreen() {
   const router = useRouter();
 
-  const renderDeviceItem = ({ item }: { item: (typeof MOCK_DEVICES)[0] }) => (
+  const devices = useMemo(() => generateMockSummaries(), []);
+
+  const renderDeviceItem = ({ item }: { item: DeviceSummary }) => (
     <TouchableOpacity
       style={styles.deviceCard}
       onPress={() =>
         router.push({
           pathname: "/log/detail",
           params: {
-            deviceId: item.id,
-            deviceName: item.name,
+            deviceId: item.deviceId,
+            deviceName: item.modelName,
           },
         })
       }
       activeOpacity={0.7}
     >
       <DeviceIcon
-        status={item.status}
-        name={item.name}
+        status={item.machineStatus}
+        name={item.deviceId}
         size={ITEM_SIZE * 0.8}
       />
+      <Text style={styles.deviceLabel} numberOfLines={1}>
+        {item.deviceId.replace("RASP_PI_", "#")}
+      </Text>
     </TouchableOpacity>
   );
 
@@ -53,11 +59,11 @@ export default function DeviceLogScreen() {
 
       <View style={PageStyles.container}>
         <PageHeader title="장비별 로그 보기" />
+        <View style={{ marginBottom: 30 }} />
 
-        {/* 장비 리스트 */}
         <FlatList
-          data={MOCK_DEVICES}
-          keyExtractor={(item) => item.id}
+          data={devices}
+          keyExtractor={(item) => item.deviceId}
           renderItem={renderDeviceItem}
           numColumns={COLUMN_COUNT}
           contentContainerStyle={styles.listContent}
@@ -81,7 +87,13 @@ const styles = StyleSheet.create({
   deviceCard: {
     width: ITEM_SIZE,
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: 20,
+  },
+  deviceLabel: {
+    fontSize: 10,
+    color: "#64748B",
+    marginTop: 4,
+    fontWeight: "600",
   },
   emptyContainer: {
     flex: 1,
