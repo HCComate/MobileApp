@@ -46,6 +46,8 @@ const MAX_LOG_CAPACITY = 50000;
 const INITIAL_DATA_COUNT = 500;
 const ERROR_RATE = 0.0005;
 
+let globalSequence = 0;
+
 const DEVICE_IDS = Array.from(
   { length: DEVICE_COUNT },
   (_, i) => `RASP_PI_${String(i + 1).padStart(2, "0")}`,
@@ -77,8 +79,6 @@ const createLogEntry = (
 
   if (state.status === "RUN" && Math.random() < ERROR_RATE) {
     state.status = "ERROR";
-
-    // statesheet 데이터에서 랜덤하게 에러 하나 선택
     const randomError =
       ERROR_MASTER_DATA[Math.floor(Math.random() * ERROR_MASTER_DATA.length)];
 
@@ -144,9 +144,9 @@ const init = () => {
   const tempLogs: RawLog[] = [];
   for (let i = 0; i < INITIAL_DATA_COUNT; i++) {
     const deviceId = DEVICE_IDS[i % DEVICE_COUNT];
-    const seq = Math.floor(i / DEVICE_COUNT) + 1;
+    globalSequence++;
     const time = new Date(Date.now() - (INITIAL_DATA_COUNT - i) * 1000);
-    tempLogs.push(createLogEntry(deviceId, seq, time));
+    tempLogs.push(createLogEntry(deviceId, globalSequence, time));
   }
   MOCK_RAW_LOGS = tempLogs.reverse();
 };
@@ -154,11 +154,11 @@ const init = () => {
 init();
 
 setInterval(() => {
-  const currentMaxSeq =
-    MOCK_RAW_LOGS.length > 0 ? MOCK_RAW_LOGS[0].body.sequence : 0;
-  const newBatch = DEVICE_IDS.map((id) =>
-    createLogEntry(id, currentMaxSeq + 1),
-  );
+  const newBatch = DEVICE_IDS.map((id) => {
+    globalSequence++;
+    return createLogEntry(id, globalSequence);
+  });
+
   MOCK_RAW_LOGS = [...newBatch, ...MOCK_RAW_LOGS];
 
   if (MOCK_RAW_LOGS.length > MAX_LOG_CAPACITY) {
