@@ -1,21 +1,10 @@
-import { Ionicons } from "@expo/vector-icons";
-import { Stack, useRouter } from "expo-router";
+import { Stack } from "expo-router";
 import React from "react";
-import {
-  FlatList,
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { FlatList, Image, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MOCK_WORKERS } from "../mock/workers";
 
 export default function ManagementScreen() {
-  const router = useRouter();
-
-  // 작업자 리스트 렌더링
   const renderWorkerItem = ({ item }: { item: (typeof MOCK_WORKERS)[0] }) => (
     <View style={styles.workerItem}>
       <Image source={{ uri: item.image }} style={styles.profileImage} />
@@ -37,20 +26,12 @@ export default function ManagementScreen() {
 
   return (
     <>
-      {/* 기본 상단바 숨기기 설정 */}
       <Stack.Screen options={{ headerShown: false }} />
-      <SafeAreaView style={styles.safeArea} edges={["top", "right", "left"]}>
+      <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.backButton}
-          >
-            <Ionicons name="arrow-back" size={24} color="#000" />
-          </TouchableOpacity>
           <Text style={styles.headerTitle}>작업자 관리</Text>
         </View>
 
-        {/* 작업자 목록 리스트 */}
         <FlatList
           data={MOCK_WORKERS}
           keyExtractor={(item) => item.id}
@@ -75,10 +56,6 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderBottomWidth: 1,
     borderBottomColor: "#EEEEEE",
-  },
-  backButton: {
-    padding: 5,
-    marginRight: 10,
   },
   headerTitle: {
     fontSize: 20,

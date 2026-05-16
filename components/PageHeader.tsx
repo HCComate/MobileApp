@@ -21,7 +21,7 @@ export default function PageHeader({
             if (router.canGoBack()) {
               router.back();
             } else {
-              router.push("/");
+              router.replace("/");
             }
           }}
           style={styles.backBtn}
@@ -49,26 +49,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-
     elevation: 4,
   },
-
   backBtn: {
     width: 40,
     alignItems: "flex-start",
     justifyContent: "center",
     paddingLeft: 8,
   },
-
   backText: {
     fontSize: 28,
     color: "#FFFFFF",
   },
-
   sidePlaceholder: {
     width: 40,
   },
-
   headerTitle: {
     flex: 1,
     textAlign: "center",

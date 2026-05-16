@@ -12,7 +12,6 @@ import {
   ViewToken,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Header from "../../../components/Header";
 import PageHeader from "../../../components/PageHeader";
 import {
   EQ_COLORS,
@@ -231,11 +230,7 @@ export default function EquipmentStatsScreen() {
         barStyle="light-content"
         backgroundColor={EQ_COLORS.headerBg}
       />
-
-      <Header />
-
-      <PageHeader title="장비 모니터링" />
-
+      <PageHeader title="장비 모니터링" showBack={true} />
       <View style={styles.actionBar}>
         <ScrollView
           horizontal

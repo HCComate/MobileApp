@@ -10,7 +10,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Header from "../../../components/Header";
 import PageHeader from "../../../components/PageHeader";
 import { Colors } from "../../../constants/Colors";
 
@@ -41,16 +40,15 @@ export default function LogMainMenu() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "right", "left"]}>
+      {/* 기본 상단바 숨기기 설정 */}
       <Stack.Screen options={{ headerShown: false }} />
-      <Header />
+      <PageHeader title="장비 로그 보기" showBack={true} />
 
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.contentContainer}
       >
-        <PageHeader title="장비 로그 보기" />
-        <View style={{ marginBottom: 30 }} />
-
+        {/* 메뉴 그리드 */}
         <View style={styles.menuGrid}>
           {LOG_MENUS.map((menu, index) => (
             <TouchableOpacity
@@ -66,6 +64,7 @@ export default function LogMainMenu() {
           ))}
         </View>
 
+        {/* 하단 정보 영역 */}
         <View style={styles.footerInfo}>
           <View style={styles.divider} />
           <Text style={styles.versionText}>
@@ -81,10 +80,10 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: Colors.light.background },
   container: { flex: 1 },
   contentContainer: {
+    paddingTop: 20,
     paddingBottom: 40,
     minHeight: height * 0.8,
   },
-
   menuGrid: { paddingHorizontal: 20, gap: 15 },
   menuButton: {
     backgroundColor: "#4A4A6A",
