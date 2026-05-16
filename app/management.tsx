@@ -1,10 +1,19 @@
-import { Stack } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { Stack, useRouter } from "expo-router";
 import React from "react";
-import { FlatList, Image, StyleSheet, Text, View } from "react-native";
+import {
+  FlatList,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MOCK_WORKERS } from "../mock/workers";
 
 export default function ManagementScreen() {
+  const router = useRouter();
   const renderWorkerItem = ({ item }: { item: (typeof MOCK_WORKERS)[0] }) => (
     <View style={styles.workerItem}>
       <Image source={{ uri: item.image }} style={styles.profileImage} />
@@ -29,6 +38,13 @@ export default function ManagementScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={24} color="#000" />
+          </TouchableOpacity>
           <Text style={styles.headerTitle}>작업자 관리</Text>
         </View>
 
@@ -52,10 +68,14 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 15,
     borderBottomWidth: 1,
     borderBottomColor: "#EEEEEE",
+  },
+  backButton: {
+    padding: 4,
+    marginRight: 8,
   },
   headerTitle: {
     fontSize: 20,

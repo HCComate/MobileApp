@@ -1,6 +1,6 @@
 import Header from "@/components/Header";
 import { Colors } from "@/constants/Colors";
-import { MOCK_USER_DATA } from "@/mock/userData";
+import { CURRENT_LOGIN_ID, MOCK_USER_LIST } from "@/mock/userData";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -19,20 +19,22 @@ import { SafeAreaView } from "react-native-safe-area-context";
 export default function MyPage() {
   const router = useRouter();
 
-  const [isPushEnabled, setIsPushEnabled] = useState(
-    MOCK_USER_DATA.isPushEnabled,
-  );
-  const [serverIp, setServerIp] = useState(MOCK_USER_DATA.serverSettings.ip);
-  const [port, setPort] = useState(MOCK_USER_DATA.serverSettings.port);
+  const currentUser =
+    MOCK_USER_LIST.find((user) => user.loginId === CURRENT_LOGIN_ID) ||
+    MOCK_USER_LIST[0];
+
+  const [isPushEnabled, setIsPushEnabled] = useState(currentUser.isPushEnabled);
+  const [serverIp, setServerIp] = useState(currentUser.serverSettings.ip);
+  const [port, setPort] = useState(currentUser.serverSettings.port);
   const [refreshInterval, setRefreshInterval] = useState(
-    MOCK_USER_DATA.serverSettings.interval,
+    currentUser.serverSettings.interval,
   );
 
   const [userData] = useState({
-    name: MOCK_USER_DATA.name,
-    id: MOCK_USER_DATA.id,
-    role: MOCK_USER_DATA.role,
-    expiryDate: MOCK_USER_DATA.expiryDate,
+    name: currentUser.name,
+    id: currentUser.id,
+    role: currentUser.role,
+    expiryDate: currentUser.expiryDate,
   });
 
   const [connectionStatus, setConnectionStatus] = useState("연결 대기 중");
@@ -48,11 +50,14 @@ export default function MyPage() {
     }, 1500);
   };
 
+  const handleLogout = () => {
+    router.replace("/login");
+  };
+
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "right", "left"]}>
       <Header />
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        {/* 계정 및 권한 */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>계정 및 권한</Text>
           <View style={styles.accountBox}>
@@ -67,13 +72,16 @@ export default function MyPage() {
               <Text style={styles.label}>만료일</Text>
               <Text style={styles.value}>{userData.expiryDate}</Text>
             </View>
-            <TouchableOpacity style={styles.logoutButton}>
+            <TouchableOpacity
+              style={styles.logoutButton}
+              onPress={handleLogout}
+            >
               <Text style={styles.logoutText}>로그아웃</Text>
               <Ionicons name="exit-outline" size={16} color="#FFF" />
             </TouchableOpacity>
           </View>
         </View>
-        {/* 알림 */}
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>알림</Text>
           <View style={styles.rowBetween}>
@@ -92,7 +100,6 @@ export default function MyPage() {
           </Text>
         </View>
 
-        {/* 네트워크 */}
         <View style={styles.section}>
           <View style={styles.rowBetween}>
             <Text style={styles.sectionTitle}>네트워크</Text>
@@ -157,7 +164,6 @@ export default function MyPage() {
           </TouchableOpacity>
         </View>
 
-        {/* 운영 */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>운영</Text>
           <TouchableOpacity
