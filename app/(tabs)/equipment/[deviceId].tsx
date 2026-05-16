@@ -19,6 +19,7 @@ import {
   STATUS_COLOR,
   STATUS_LABEL,
 } from "../../../constants/equipmentConstants";
+import { getMockDetailByDevice } from "../../../mock/deviceMocks";
 import { deviceStore } from "../../../store/deviceStore";
 import { DeviceDetail, StatusInfo } from "../../../types/equipment";
 
@@ -39,60 +40,49 @@ export default function DeviceDetailScreen() {
   const [camTab, setCamTab] = useState<CameraTab>("front");
   const [loading, setLoading] = useState(true);
 
-  // ⚠️ 테스트용: store 더미 상세 데이터 조회
-  // TODO: 통신 연동 시 아래 블록을 API 호출로 교체
-  //   try {
-  //     const res  = await fetch(
-  //       `http://서버IP:포트/api/devices/${deviceId}/detail`,
-  //       { headers: { Authorization: `Bearer ${token}` } }
-  //     );
-  //     const data: DeviceDetail = await res.json();
-  //     deviceStore.setDetail(data);
-  //     setDetail(data);
-  //   } catch (e) { setDetail(null); }
-  //   finally     { setLoading(false); }
   useEffect(() => {
-    const found = deviceStore.getDetail(deviceId);
-    if (found) {
-      setDetail(found);
-      setLoading(false);
-      return;
-    }
+    // 최신 데이터를 가져와서 화면을 갱신하는 함수
+    const refreshDetail = () => {
+      const found = getMockDetailByDevice(deviceId);
+      if (found) {
+        setDetail(found);
+        setLoading(false);
+      } else {
+        // 상세 데이터가 없을 경우 store의 요약 정보라도 활용 (기존 로직 보완)
+        const summary = deviceStore.get(deviceId);
+        if (summary) {
+          const partial: DeviceDetail = {
+            deviceId: summary.deviceId,
+            modelName: summary.modelName,
+            batchId: "UNKNOWN",
+            sequence: summary.lastSequence ?? 0,
+            machineStatus: summary.machineStatus,
+            temperature: 0,
+            vibrationX: 0,
+            vibrationY: 0,
+            illumination: 0,
+            humidity: 0,
+            timestamp: summary.timestamp,
+            statusInfos: [],
+            visionResult: {
+              result: (summary.visionResult ?? "OK") as any,
+              defectType: "",
+              confidence: 0,
+              inspectionArea: "",
+              imageUrl: null,
+            },
+          };
+          setDetail(partial);
+          setLoading(false);
+        }
+      }
+    };
 
-    // 세부정보가 없을 때는 목록 요약에서 임시로 보완하여 표시
-    const summary = deviceStore.get(deviceId);
-    if (summary) {
-      const partial: DeviceDetail = {
-        deviceId: summary.deviceId,
-        modelName: summary.modelName,
-        batchId: "UNKNOWN",
-        sequence: summary.lastSequence ?? 0,
-        machineStatus: summary.machineStatus,
-        temperature: 0,
-        vibrationX: 0,
-        vibrationY: 0,
-        illumination: 0,
-        humidity: 0,
-        timestamp: summary.timestamp,
-        statusInfos: [],
-        visionResult: {
-          result: (summary.visionResult ?? "OK") as any,
-          defectType: "",
-          confidence: 0,
-          inspectionArea: "",
-          imageUrl: null,
-        },
-      };
-      setDetail(partial);
-      setLoading(false);
-      return;
-    }
+    // 즉시 실행 및 1초마다 반복 실행
+    refreshDetail();
+    const interval = setInterval(refreshDetail, 1000);
 
-    const timer = setTimeout(() => {
-      setDetail(deviceStore.getDetail(deviceId) ?? null);
-      setLoading(false);
-    }, 300);
-    return () => clearTimeout(timer);
+    return () => clearInterval(interval);
   }, [deviceId]);
 
   if (loading) {

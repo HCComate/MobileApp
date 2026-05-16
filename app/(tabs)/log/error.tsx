@@ -4,19 +4,20 @@ import { FlatList, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "../../../components/Header";
 import PageHeader from "../../../components/PageHeader";
-import { MOCK_RAW_LOGS } from "../../../mock/Logs";
+import { useLogData } from "../../../hooks/updateData";
+import { RawLog } from "../../../mock/Logs";
 import { LogStyles } from "../../../styles/LogStyles";
 import { PageStyles } from "../../../styles/PageStyles";
 
 export default function ErrorLogScreen() {
+  const logs = useLogData();
   // 오직 machine_status가 ERROR인 데이터만 필터링
-  const errorLogs = MOCK_RAW_LOGS.filter(
-    (item) => item.body.machine_status === "ERROR",
-  );
+  const errorLogs = logs.filter((item) => item.body.machine_status === "ERROR");
 
-  const renderLogItem = ({ item }: { item: (typeof MOCK_RAW_LOGS)[0] }) => {
+  const renderLogItem = ({ item }: { item: RawLog }) => {
     const info = item.body.status_info[0];
-    const [date, time] = item.body.timestamp.split(" ");
+    const ts = item.body.timestamp.replace("T", " ").split(".")[0];
+    const [date, time] = ts.split(" ");
 
     return (
       <View style={[LogStyles.logRow, styles.errorRow]}>
@@ -58,7 +59,9 @@ export default function ErrorLogScreen() {
 
         <FlatList
           data={errorLogs}
-          keyExtractor={(item) => item.body.sequence.toString()}
+          keyExtractor={(item) =>
+            `${item.header.device_id}-${item.body.sequence}`
+          }
           renderItem={renderLogItem}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={

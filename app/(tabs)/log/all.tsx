@@ -4,12 +4,15 @@ import { FlatList, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "../../../components/Header";
 import PageHeader from "../../../components/PageHeader";
-import { MOCK_RAW_LOGS } from "../../../mock/Logs";
+import { useLogData } from "../../../hooks/updateData";
+import { RawLog } from "../../../mock/Logs";
 import { LogStyles } from "../../../styles/LogStyles";
 import { PageStyles } from "../../../styles/PageStyles";
 
 export default function AllLogScreen() {
-  const getStatusStyle = (item: (typeof MOCK_RAW_LOGS)[0]) => {
+  const logs = useLogData();
+
+  const getStatusStyle = (item: RawLog) => {
     const info = item.body.status_info[0];
     const msg = info.msg.toLowerCase();
 
@@ -38,10 +41,11 @@ export default function AllLogScreen() {
     return { backgroundColor: "#F2F4F7", textColor: "#333333" };
   };
 
-  const renderLogItem = ({ item }: { item: (typeof MOCK_RAW_LOGS)[0] }) => {
+  const renderLogItem = ({ item }: { item: RawLog }) => {
     const style = getStatusStyle(item);
     const info = item.body.status_info[0];
-    const [date, time] = item.body.timestamp.split(" ");
+    const ts = item.body.timestamp.replace("T", " ").split(".")[0];
+    const [date, time] = ts.split(" ");
 
     return (
       <View
@@ -96,8 +100,10 @@ export default function AllLogScreen() {
           <Text style={[LogStyles.columnText, { flex: 2 }]}>로그 내용</Text>
         </View>
         <FlatList
-          data={MOCK_RAW_LOGS}
-          keyExtractor={(item) => item.body.sequence.toString()}
+          data={logs}
+          keyExtractor={(item) =>
+            `${item.header.device_id}-${item.body.sequence}`
+          }
           renderItem={renderLogItem}
           showsVerticalScrollIndicator={false}
         />

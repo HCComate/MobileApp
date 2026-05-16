@@ -4,11 +4,13 @@ import { FlatList, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "../../../components/Header";
 import PageHeader from "../../../components/PageHeader";
-import { MOCK_RAW_LOGS } from "../../../mock/Logs";
+import { useLogData } from "../../../hooks/updateData";
+import { RawLog } from "../../../mock/Logs";
 import { LogStyles } from "../../../styles/LogStyles";
 import { PageStyles } from "../../../styles/PageStyles";
 
 export default function DeviceDetailLogScreen() {
+  const logs = useLogData();
   // 네비게이션으로 전달받은 deviceId 추출
   const { deviceId, deviceName } = useLocalSearchParams<{
     deviceId: string;
@@ -17,10 +19,10 @@ export default function DeviceDetailLogScreen() {
 
   // 해당 장비의 로그만 필터링
   const filteredLogs = useMemo(() => {
-    return MOCK_RAW_LOGS.filter((log) => log.header.device_id === deviceId);
-  }, [deviceId]);
+    return logs.filter((log) => log.header.device_id === deviceId);
+  }, [logs, deviceId]);
 
-  const getStatusStyle = (item: (typeof MOCK_RAW_LOGS)[0]) => {
+  const getStatusStyle = (item: RawLog) => {
     const info = item.body.status_info[0];
     const msg = info.msg.toLowerCase();
     if (msg.includes("recovery") || msg.includes("success")) {
@@ -35,9 +37,10 @@ export default function DeviceDetailLogScreen() {
     return { backgroundColor: "#F2F4F7", textColor: "#333333" };
   };
 
-  const renderLogItem = ({ item }: { item: (typeof MOCK_RAW_LOGS)[0] }) => {
+  const renderLogItem = ({ item }: { item: RawLog }) => {
     const style = getStatusStyle(item);
-    const [date, time] = item.body.timestamp.split(" ");
+    const ts = item.body.timestamp.replace("T", " ").split(".")[0];
+    const [date, time] = ts.split(" ");
     return (
       <View
         style={[
@@ -82,7 +85,9 @@ export default function DeviceDetailLogScreen() {
 
         <FlatList
           data={filteredLogs}
-          keyExtractor={(item) => item.body.sequence.toString()}
+          keyExtractor={(item) =>
+            `${item.header.device_id}-${item.body.sequence}`
+          }
           renderItem={renderLogItem}
           ListEmptyComponent={
             <Text

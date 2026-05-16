@@ -4,19 +4,21 @@ import { FlatList, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "../../../components/Header";
 import PageHeader from "../../../components/PageHeader";
-import { MOCK_RAW_LOGS } from "../../../mock/Logs";
+import { useLogData } from "../../../hooks/updateData";
+import { RawLog } from "../../../mock/Logs";
 import { LogStyles } from "../../../styles/LogStyles";
 import { PageStyles } from "../../../styles/PageStyles";
 
 export default function EventLogScreen() {
+  const logs = useLogData();
   // 정상인 로그 아닌 것만 필터링
-  const eventLogs = MOCK_RAW_LOGS.filter(
+  const eventLogs = logs.filter(
     (item) =>
       item.body.status_info[0].code !== "NORMAL" &&
       item.body.status_info[0].code !== "SV-VS-PR-00",
   );
 
-  const getStatusStyle = (item: (typeof MOCK_RAW_LOGS)[0]) => {
+  const getStatusStyle = (item: RawLog) => {
     const info = item.body.status_info[0];
     const msg = info.msg.toLowerCase();
 
@@ -37,10 +39,11 @@ export default function EventLogScreen() {
     return { backgroundColor: "#F1C40F", textColor: "#000000" };
   };
 
-  const renderLogItem = ({ item }: { item: (typeof MOCK_RAW_LOGS)[0] }) => {
+  const renderLogItem = ({ item }: { item: RawLog }) => {
     const style = getStatusStyle(item);
     const info = item.body.status_info[0];
-    const [date, time] = item.body.timestamp.split(" ");
+    const ts = item.body.timestamp.replace("T", " ").split(".")[0];
+    const [date, time] = ts.split(" ");
 
     return (
       <View
@@ -124,7 +127,9 @@ export default function EventLogScreen() {
         </View>
         <FlatList
           data={eventLogs}
-          keyExtractor={(item) => item.body.sequence.toString()}
+          keyExtractor={(item) =>
+            `${item.header.device_id}-${item.body.sequence}`
+          }
           renderItem={renderLogItem}
           showsVerticalScrollIndicator={false}
         />

@@ -4,6 +4,7 @@ import * as Notifications from "expo-notifications";
 import { Tabs } from "expo-router";
 import React, { useEffect } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import AlertModal from "../../components/AlertModal";
 import {
   startForegroundService,
   stopForegroundService,
@@ -148,6 +149,7 @@ export default function TabLayout() {
           <Tabs.Screen key={name} name={name} options={{ href: null }} />
         ))}
       </Tabs>
+      <AlertModal />
     </>
   );
 }
