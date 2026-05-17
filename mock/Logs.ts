@@ -1,6 +1,6 @@
 import { ERROR_MASTER_DATA } from "../assets/data/statesheet";
 import { handleAlertEvent } from "../services/alertManager";
-import { WORKER_LIST } from "./workerConfig";
+// import { WORKER_LIST } from "./workerConfig";
 import { MOCK_WORKERS } from "./workers";
 
 export interface RawStatusInfo {
@@ -25,7 +25,7 @@ export interface RawLog {
     device_id: string;
     batch_id: string;
     model_name: string;
-    assigned_worker_id: string;
+    // assigned_worker_id
   };
   body: {
     sequence: number;
@@ -37,7 +37,7 @@ export interface RawLog {
       vibration_x: number;
       vibration_y: number;
       illumination: number;
-      humidity: number;
+      // humidity
     };
     timestamp: string;
   };
@@ -63,13 +63,22 @@ const deviceCurrentState = new Map<
 
 export let MOCK_RAW_LOGS: RawLog[] = [];
 
+// YYYY-MM-DD HH:MM:SS.mmm 변환 함수
+const formatPythonTimestamp = (date: Date): string => {
+  const pad = (n: number, width: number = 2) => String(n).padStart(width, "0");
+  return (
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ` +
+    `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}.${pad(date.getMilliseconds(), 3)}`
+  );
+};
+
 const createLogEntry = (
   deviceId: string,
   sequence: number,
   customTimestamp?: Date,
 ): RawLog => {
-  const deviceIndex = DEVICE_IDS.indexOf(deviceId);
-  const worker = WORKER_LIST[deviceIndex % WORKER_LIST.length];
+  // const deviceIndex = DEVICE_IDS.indexOf(deviceId);
+  // const worker = WORKER_LIST[deviceIndex % WORKER_LIST.length];
 
   let state = deviceCurrentState.get(deviceId) || { status: "RUN", info: [] };
   let vision: RawVisionResult = {
@@ -80,7 +89,7 @@ const createLogEntry = (
     image_url: null,
   };
 
-  // --- [핵심 수정] 에러 발생 로직 ---
+  // 에러 발생 로직
   if (state.status === "RUN" && Math.random() < ERROR_RATE) {
     state.status = "ERROR";
     const randomError =
@@ -104,7 +113,7 @@ const createLogEntry = (
       errorCode: newErrorInfo.code,
       errorMsg: newErrorInfo.msg,
       severity: newErrorInfo.severity,
-      timestamp: new Date().toISOString(),
+      timestamp: formatPythonTimestamp(new Date()),
     };
     handleAlertEvent(alertEvent, MOCK_WORKERS as any);
   } else if (state.status === "ERROR" && Math.random() < RECOVERY_RATE) {
@@ -149,7 +158,7 @@ const createLogEntry = (
       device_id: deviceId,
       batch_id: "BATCH_REALTIME",
       model_name: "SMT_CHIP_A20",
-      assigned_worker_id: worker.id,
+      // assigned_worker_id
     },
     body: {
       sequence,
@@ -161,9 +170,9 @@ const createLogEntry = (
         vibration_x: Math.random() * 0.05,
         vibration_y: Math.random() * 0.05,
         illumination: 1200 + Math.random() * 200,
-        humidity: 40 + Math.random() * 10,
+        // humidity
       },
-      timestamp: (customTimestamp || new Date()).toISOString(),
+      timestamp: formatPythonTimestamp(customTimestamp || new Date()),
     },
   };
 };

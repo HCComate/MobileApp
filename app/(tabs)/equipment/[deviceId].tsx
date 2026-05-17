@@ -61,7 +61,7 @@ export default function DeviceDetailScreen() {
             vibrationX: 0,
             vibrationY: 0,
             illumination: 0,
-            humidity: 0,
+            // humidity: 0,
             timestamp: summary.timestamp,
             statusInfos: [],
             visionResult: {
@@ -244,7 +244,7 @@ export default function DeviceDetailScreen() {
           <InfoRow label="진동 X" value={`${detail.vibrationX.toFixed(3)} g`} />
           <InfoRow label="진동 Y" value={`${detail.vibrationY.toFixed(3)} g`} />
           <InfoRow label="조도" value={`${detail.illumination} lux`} />
-          <InfoRow label="습도" value={`${detail.humidity.toFixed(1)} %`} />
+          {/* <InfoRow label="습도" value={`${detail.humidity.toFixed(1)} %`} /> */}
         </SectionCard>
 
         {/* 상태 코드 */}

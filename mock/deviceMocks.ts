@@ -44,7 +44,7 @@ export const generateMockDetails = (): DeviceDetail[] =>
       vibrationX: log.body.sensor_data.vibration_x,
       vibrationY: log.body.sensor_data.vibration_y,
       illumination: log.body.sensor_data.illumination,
-      humidity: log.body.sensor_data.humidity, // ← rawLogs에서 가져옴
+      // humidity: log.body.sensor_data.humidity, // ← rawLogs에서 가져옴
       timestamp: log.body.timestamp,
       statusInfos: log.body.status_info.map((s) => ({
         code: s.code,
