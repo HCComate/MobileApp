@@ -1,11 +1,17 @@
 import Header from "@/components/Header";
 import { Colors } from "@/constants/Colors";
-import { CURRENT_LOGIN_ID, MOCK_USER_LIST } from "@/mock/userData";
+import {
+  CURRENT_LOGIN_ID,
+  MOCK_USER_LIST,
+  updateServerSettings,
+} from "@/mock/userData";
 import { Ionicons } from "@expo/vector-icons";
+import axios from "axios";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   ScrollView,
   StyleSheet,
   Switch,
@@ -40,14 +46,51 @@ export default function MyPage() {
   const [connectionStatus, setConnectionStatus] = useState("연결 대기 중");
   const [isConnecting, setIsConnecting] = useState(false);
 
-  const handleConnect = () => {
+  const handleConnect = async () => {
+    const trimmedIp = serverIp.trim();
+    const trimmedPort = port.trim();
+
+    if (!trimmedIp || !trimmedPort) {
+      Alert.alert("알림", "서버 IP와 포트 번호를 모두 입력해 주세요.");
+      return;
+    }
+
     setIsConnecting(true);
     setConnectionStatus("연결 중...");
 
-    setTimeout(() => {
+    const targetUrl = `http://${trimmedIp}:${trimmedPort}`;
+
+    try {
+      // 스프링 부트 HealthController (/api/health) 호출 검증 (타임아웃 3초 세팅)
+      const response = await axios.get(`${targetUrl}/api/health`, {
+        timeout: 3000,
+      });
+
+      if (response.data && response.data.status === "OK") {
+        setIsConnecting(false);
+        setConnectionStatus("연결 완료");
+
+        // 전역 모드 스위치를 true(실제 서버 모드)로 활성화
+        updateServerSettings(trimmedIp, trimmedPort, true);
+        Alert.alert(
+          "연결 성공",
+          "Spring Boot 백엔드 서버와 정상적으로 통신이 연결되었습니다.",
+        );
+      } else {
+        throw new Error("올바르지 않은 서버 응답 형식");
+      }
+    } catch (error) {
+      console.error("[Health Check Error]:", error);
       setIsConnecting(false);
-      setConnectionStatus("연결 완료");
-    }, 1500);
+      setConnectionStatus("연결 실패");
+
+      // 연결 실패 시 mock 데이터 로직이 계속 유지되도록 안정 장치 처리
+      updateServerSettings(trimmedIp, trimmedPort, false);
+      Alert.alert(
+        "연결 실패",
+        "서버에 연결할 수 없습니다.\n\n[확인 사항]\n1. IP 주소 일치 여부\n2. 서버 실행 상태\n3. 방화벽 및 CORS 허용 여부",
+      );
+    }
   };
 
   const handleLogout = () => {
@@ -108,7 +151,11 @@ export default function MyPage() {
                 styles.statusText,
                 {
                   color:
-                    connectionStatus === "연결 완료" ? "#3055C1" : "#E67E22",
+                    connectionStatus === "연결 완료"
+                      ? "#3055C1"
+                      : connectionStatus === "연결 실패"
+                        ? "#E74C3C"
+                        : "#E67E22",
                 },
               ]}
             >
@@ -123,6 +170,7 @@ export default function MyPage() {
             onChangeText={setServerIp}
             placeholder="192.168.0.1"
             placeholderTextColor="#94A3B8"
+            autoCapitalize="none" // 대문자 자동전환 방지
           />
 
           <Text style={styles.inputLabel}>포트 번호</Text>
