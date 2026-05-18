@@ -1,6 +1,7 @@
 import { ERROR_MASTER_DATA } from "../assets/data/statesheet";
 import { handleAlertEvent } from "../services/alertManager";
-// import { WORKER_LIST } from "./workerConfig";
+import { AlertEvent } from "../types/alert";
+import { WORKER_LIST } from "./workerConfig";
 import { MOCK_WORKERS } from "./workers";
 
 export interface RawStatusInfo {
@@ -25,7 +26,7 @@ export interface RawLog {
     device_id: string;
     batch_id: string;
     model_name: string;
-    // assigned_worker_id
+    assigned_worker_id: string;
   };
   body: {
     sequence: number;
@@ -37,7 +38,7 @@ export interface RawLog {
       vibration_x: number;
       vibration_y: number;
       illumination: number;
-      // humidity
+      humidity: number;
     };
     timestamp: string;
   };
@@ -45,9 +46,9 @@ export interface RawLog {
 
 const DEVICE_COUNT = 25;
 const MAX_LOG_CAPACITY = 50000;
-const INITIAL_DATA_COUNT = 50;
-const ERROR_RATE = 0.05; // 5% 확률로 에러 발생
-const RECOVERY_RATE = 0.2; // 20% 확률로 정상 복구
+const INITIAL_DATA_COUNT = 500;
+const ERROR_RATE = 0.05; // 확률 상향 (역동적인 화면을 위해)
+const RECOVERY_RATE = 0.2; // 에러 복구 확률
 
 let globalSequence = 0;
 
@@ -63,22 +64,13 @@ const deviceCurrentState = new Map<
 
 export let MOCK_RAW_LOGS: RawLog[] = [];
 
-// YYYY-MM-DD HH:MM:SS.mmm 변환 함수
-const formatPythonTimestamp = (date: Date): string => {
-  const pad = (n: number, width: number = 2) => String(n).padStart(width, "0");
-  return (
-    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ` +
-    `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}.${pad(date.getMilliseconds(), 3)}`
-  );
-};
-
 const createLogEntry = (
   deviceId: string,
   sequence: number,
   customTimestamp?: Date,
 ): RawLog => {
-  // const deviceIndex = DEVICE_IDS.indexOf(deviceId);
-  // const worker = WORKER_LIST[deviceIndex % WORKER_LIST.length];
+  const deviceIndex = DEVICE_IDS.indexOf(deviceId);
+  const worker = WORKER_LIST[deviceIndex % WORKER_LIST.length];
 
   let state = deviceCurrentState.get(deviceId) || { status: "RUN", info: [] };
   let vision: RawVisionResult = {
@@ -89,54 +81,41 @@ const createLogEntry = (
     image_url: null,
   };
 
-  // 에러 발생 로직
   if (state.status === "RUN" && Math.random() < ERROR_RATE) {
     state.status = "ERROR";
     const randomError =
       ERROR_MASTER_DATA[Math.floor(Math.random() * ERROR_MASTER_DATA.length)];
 
-    // 1. 에러 정보 생성
-    const newErrorInfo: RawStatusInfo = {
-      code: randomError.코드,
-      msg: randomError.오류명,
-      severity: randomError.심각도.toUpperCase() as any,
-      direction: "TOP",
-      part_location: "ZONE_A1",
-      is_capture_required: true,
-    };
-    state.info = [newErrorInfo]; // 상태 업데이트
+    state.info = [
+      {
+        code: randomError.코드,
+        msg: randomError.오류명,
+        severity: randomError.심각도.toUpperCase() as any,
+        direction: "TOP",
+        part_location: "ZONE_A1",
+        is_capture_required: true,
+      },
+    ];
 
-    // 2. 알람 트리거 발송
-    const alertEvent = {
-      alertId: `alert_${Date.now()}_${deviceId}`,
+    // 에러 발생 시 알람 트리거
+    const alertEvent: AlertEvent = {
+      alertId: `${deviceId}-${Date.now()}`,
       deviceId: deviceId,
-      errorCode: newErrorInfo.code,
-      errorMsg: newErrorInfo.msg,
-      severity: newErrorInfo.severity,
-      timestamp: formatPythonTimestamp(new Date()),
+      errorCode: randomError.코드,
+      errorMsg: randomError.오류명,
+      severity: randomError.심각도.toUpperCase() as any,
+      timestamp: new Date().toISOString(),
     };
+    console.log(`[MockLogs] 에러 발생: ${deviceId}, 알람 트리거`);
     handleAlertEvent(alertEvent, MOCK_WORKERS as any);
   } else if (state.status === "ERROR" && Math.random() < RECOVERY_RATE) {
-    // 복구 로직
+    console.log(`[MockLogs] ${deviceId} 에러 복구 시도`);
+    // 에러 상태에서 일정 확률로 다시 정상 복구
     state.status = "RUN";
     state.info = [
       {
         code: "NORMAL",
-        msg: "Operational",
-        severity: "LOW",
-        direction: "NONE",
-        part_location: "NONE",
-        is_capture_required: false,
-      },
-    ];
-  }
-
-  // 상태가 없을 경우 초기화
-  if (state.info.length === 0) {
-    state.info = [
-      {
-        code: "NORMAL",
-        msg: "Operational",
+        msg: "System Recovered - Back to Normal",
         severity: "LOW",
         direction: "NONE",
         part_location: "NONE",
@@ -146,9 +125,23 @@ const createLogEntry = (
   }
 
   if (state.status === "ERROR") {
-    vision.result = "NG";
-    vision.defect_type = "MISALIGN";
-    vision.confidence = 0.45;
+    vision = {
+      ...vision,
+      result: "NG",
+      defect_type: "MISALIGN",
+      confidence: 0.45,
+    };
+  } else {
+    state.info = [
+      {
+        code: "NORMAL",
+        msg: "Operational",
+        severity: "LOW",
+        direction: "NONE",
+        part_location: "NONE",
+        is_capture_required: false,
+      },
+    ];
   }
 
   deviceCurrentState.set(deviceId, state);
@@ -158,7 +151,7 @@ const createLogEntry = (
       device_id: deviceId,
       batch_id: "BATCH_REALTIME",
       model_name: "SMT_CHIP_A20",
-      // assigned_worker_id
+      assigned_worker_id: worker.id,
     },
     body: {
       sequence,
@@ -170,9 +163,9 @@ const createLogEntry = (
         vibration_x: Math.random() * 0.05,
         vibration_y: Math.random() * 0.05,
         illumination: 1200 + Math.random() * 200,
-        // humidity
+        humidity: 40 + Math.random() * 10,
       },
-      timestamp: formatPythonTimestamp(customTimestamp || new Date()),
+      timestamp: (customTimestamp || new Date()).toISOString(),
     },
   };
 };
@@ -196,11 +189,14 @@ setInterval(() => {
   const shuffled = [...DEVICE_IDS].sort(() => 0.5 - Math.random());
   const selectedIds = shuffled.slice(0, randomCount);
 
-  const newLogs = selectedIds.map((id) => {
-    globalSequence++;
-    return createLogEntry(id, globalSequence);
-  });
+  const newLogs = selectedIds
+    .filter((id) => deviceCurrentState.get(id)?.status !== "ERROR")
+    .map((id) => {
+      globalSequence++;
+      return createLogEntry(id, globalSequence);
+    });
 
+  // 최신 로그가 위로 오도록 추가
   MOCK_RAW_LOGS = [...newLogs, ...MOCK_RAW_LOGS];
 
   if (MOCK_RAW_LOGS.length > MAX_LOG_CAPACITY) {
@@ -213,3 +209,22 @@ export const getLatestLogByDevice = (deviceId: string): RawLog | undefined =>
   MOCK_RAW_LOGS.find((l) => l.header.device_id === deviceId);
 export const getLogsByDevice = (deviceId: string): RawLog[] =>
   MOCK_RAW_LOGS.filter((l) => l.header.device_id === deviceId);
+
+export const resolveDeviceError = (deviceId: string) => {
+  const state = deviceCurrentState.get(deviceId);
+  if (state && state.status === "ERROR") {
+    state.status = "RUN";
+    state.info = [
+      {
+        code: "NORMAL",
+        msg: "System Recovered - Manual Intervention",
+        severity: "LOW",
+        direction: "NONE",
+        part_location: "NONE",
+        is_capture_required: false,
+      },
+    ];
+    deviceCurrentState.set(deviceId, state);
+    console.log(`[MockLogs] ${deviceId} 에러 수동 복구 완료. 로그 생성 재개.`);
+  }
+};

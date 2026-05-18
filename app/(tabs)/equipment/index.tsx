@@ -1,8 +1,14 @@
-import { Stack, useRouter } from "expo-router";
+// ─────────────────────────────────────────────
+//  app/(tabs)/equipment/index.tsx
+//  장비 통계 메인 화면
+// ─────────────────────────────────────────────
+
+import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Dimensions,
   FlatList,
+  // SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -12,22 +18,15 @@ import {
   ViewToken,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import PageHeader from "../../../components/PageHeader";
 import {
   EQ_COLORS,
   SEVERITY_COLOR,
   STATUS_COLOR,
   STATUS_LABEL,
 } from "../../../constants/equipmentConstants";
+import api from "../../../services/api";
 import { deviceStore } from "../../../store/deviceStore";
 import { DeviceSummary } from "../../../types/equipment";
-
-// ⚠️ 테스트용 더미 데이터
-// TODO: 통신 연동 시 아래 import 제거 후 API 호출로 교체
-import {
-  generateMockDetails,
-  generateMockSummaries,
-} from "../../../mock/deviceMocks";
 
 const { width: SW } = Dimensions.get("window");
 const GRID_PAGE_SIZE = 16;
@@ -38,30 +37,28 @@ type ViewMode = "list" | "grid";
 export default function EquipmentStatsScreen() {
   const router = useRouter();
 
-  // ⚠️ 테스트용: 더미 데이터로 초기화
-  // TODO: 통신 연동 시 useState([]) 로 시작하고 API/WebSocket 수신으로 채우기
   const [viewMode, setViewMode] = useState<ViewMode>("list");
-  const [devices, setDevices] = useState<DeviceSummary[]>(
-    generateMockSummaries,
-  );
+  const [devices, setDevices] = useState<DeviceSummary[]>([]);
   const [currentPage, setCurrentPage] = useState(0);
 
   const activeWindowRef = useRef<Set<string>>(new Set());
   const listRef = useRef<FlatList<DeviceSummary> | null>(null);
   const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 30 });
 
-  // ⚠️ 테스트용: 더미 상세 데이터 store 등록
-  // TODO: 통신 연동 시 이 블록 제거
-  //       상세 데이터는 [deviceId].tsx 에서 API 직접 호출
   useEffect(() => {
-    const details = generateMockDetails();
-    console.log(
-      "[EquipmentStats] registering mock details, count=",
-      details.length,
-      "firstId=",
-      details[0]?.deviceId,
-    );
-    deviceStore.setAllDetails(details);
+    const fetchDevices = async () => {
+      try {
+        const response = await api.get("/devices");
+        const fetchedDevices: DeviceSummary[] = response.data.data;
+        deviceStore.setAll(fetchedDevices);
+        setDevices(fetchedDevices);
+      } catch (error) {
+        console.error("Failed to fetch devices:", error);
+        deviceStore.setAll([]);
+        setDevices([]);
+      }
+    };
+    fetchDevices();
   }, []);
 
   // 요약 목록 변경 시 store 동기화
@@ -84,29 +81,6 @@ export default function EquipmentStatsScreen() {
     },
     [devices],
   );
-
-  // TODO: 통신 연동 시 이 함수를 WebSocket/Socket.IO 수신 콜백에 연결
-  //   socket.on('deviceUpdate', (raw) => {
-  //     const summary: DeviceSummary = {
-  //       deviceId:      raw.header.device_id,
-  //       modelName:     raw.header.model_name,
-  //       machineStatus: raw.body.machine_status,
-  //       timestamp:     raw.body.timestamp,
-  //       visionResult:  raw.body.vision_result.result,
-  //       severity:      raw.body.status_info[0]?.severity ?? 'LOW',
-  //       lastSequence:  raw.body.sequence,
-  //     };
-  //     deviceStore.setDetail({ deviceId: raw.header.device_id, ... });
-  //     handleIncomingData(summary);
-  //   });
-  // const handleIncomingData = useCallback((incoming: DeviceSummary) => {
-  //   if (!activeWindowRef.current.has(incoming.deviceId)) return;
-  //   setDevices((prev) =>
-  //     prev.map((d) =>
-  //       d.deviceId === incoming.deviceId ? { ...d, ...incoming } : d,
-  //     ),
-  //   );
-  // }, []);
 
   const totalPages = Math.max(1, Math.ceil(devices.length / GRID_PAGE_SIZE));
   const pageDevices = devices.slice(
@@ -224,13 +198,18 @@ export default function EquipmentStatsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "right", "left"]}>
-      <Stack.Screen options={{ headerShown: false }} />
+    <SafeAreaView style={styles.container}>
       <StatusBar
         barStyle="light-content"
         backgroundColor={EQ_COLORS.headerBg}
       />
-      <PageHeader title="장비 모니터링" showBack={true} />
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+          <Text style={styles.backBtnText}>‹</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>장비 통계</Text>
+        <View style={{ width: 40 }} />
+      </View>
       <View style={styles.actionBar}>
         <ScrollView
           horizontal

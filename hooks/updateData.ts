@@ -1,18 +1,30 @@
 import { useEffect, useState } from "react";
-import { generateMockSummaries } from "../mock/deviceMocks";
-import { MOCK_RAW_LOGS, RawLog } from "../mock/Logs";
+import { RawLog } from "../mock/logs";
+import api from "../services/api";
+import { alertModalStore } from "../store/alertModalStore";
 import { DeviceSummary } from "../types/equipment";
 
 /**
  * 1초마다 MOCK_RAW_LOGS를 구독하여 최신 로그 배열을 반환하는 훅
  */
 export function useLogData(): RawLog[] {
-  const [logs, setLogs] = useState<RawLog[]>([...MOCK_RAW_LOGS]);
+  const [logs, setLogs] = useState<RawLog[]>([]);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setLogs([...MOCK_RAW_LOGS]);
-    }, 1000);
+    const fetchLogs = async () => {
+      try {
+        if (!alertModalStore.isActive()) {
+          const response = await api.get<RawLog[]>("/inspections"); // Assuming /inspections is the endpoint for all logs
+          setLogs(response.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch logs:", error);
+      }
+    };
+
+    fetchLogs(); // Initial fetch
+    const interval = setInterval(fetchLogs, 1000); // Fetch every second
+
     return () => clearInterval(interval);
   }, []);
 
@@ -20,16 +32,22 @@ export function useLogData(): RawLog[] {
 }
 
 export function useDeviceData() {
-  const [devices, setDevices] = useState<DeviceSummary[]>(
-    generateMockSummaries(),
-  );
+  const [devices, setDevices] = useState<DeviceSummary[]>([]);
 
   useEffect(() => {
-    // 1초마다 데이터를 새로 가져와서 상태 업데이트
-    const interval = setInterval(() => {
-      const freshData = generateMockSummaries();
-      setDevices(freshData);
-    }, 1000);
+    const fetchDevices = async () => {
+      try {
+        if (!alertModalStore.isActive()) {
+          const response = await api.get<DeviceSummary[]>("/devices");
+          setDevices(response.data.data); // Assuming response.data.data contains the array of devices
+        }
+      } catch (error) {
+        console.error("Failed to fetch devices:", error);
+      }
+    };
+
+    fetchDevices(); // Initial fetch
+    const interval = setInterval(fetchDevices, 1000); // Fetch every second
 
     return () => clearInterval(interval);
   }, []);

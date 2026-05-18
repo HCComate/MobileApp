@@ -19,7 +19,8 @@ import {
   STATUS_COLOR,
   STATUS_LABEL,
 } from "../../../constants/equipmentConstants";
-import { getMockDetailByDevice } from "../../../mock/deviceMocks";
+import { resolveDeviceError } from "../../../mock/logs";
+import { resolveAlertByDeviceId } from "../../../services/alertManager";
 import { deviceStore } from "../../../store/deviceStore";
 import { DeviceDetail, StatusInfo } from "../../../types/equipment";
 
@@ -40,49 +41,60 @@ export default function DeviceDetailScreen() {
   const [camTab, setCamTab] = useState<CameraTab>("front");
   const [loading, setLoading] = useState(true);
 
+  // ⚠️ 테스트용: store 더미 상세 데이터 조회
+  // TODO: 통신 연동 시 아래 블록을 API 호출로 교체
+  //   try {
+  //     const res  = await fetch(
+  //       `http://서버IP:포트/api/devices/${deviceId}/detail`,
+  //       { headers: { Authorization: `Bearer ${token}` } }
+  //     );
+  //     const data: DeviceDetail = await res.json();
+  //     deviceStore.setDetail(data);
+  //     setDetail(data);
+  //   } catch (e) { setDetail(null); }
+  //   finally     { setLoading(false); }
   useEffect(() => {
-    // 최신 데이터를 가져와서 화면을 갱신하는 함수
-    const refreshDetail = () => {
-      const found = getMockDetailByDevice(deviceId);
-      if (found) {
-        setDetail(found);
-        setLoading(false);
-      } else {
-        // 상세 데이터가 없을 경우 store의 요약 정보라도 활용 (기존 로직 보완)
-        const summary = deviceStore.get(deviceId);
-        if (summary) {
-          const partial: DeviceDetail = {
-            deviceId: summary.deviceId,
-            modelName: summary.modelName,
-            batchId: "UNKNOWN",
-            sequence: summary.lastSequence ?? 0,
-            machineStatus: summary.machineStatus,
-            temperature: 0,
-            vibrationX: 0,
-            vibrationY: 0,
-            illumination: 0,
-            // humidity: 0,
-            timestamp: summary.timestamp,
-            statusInfos: [],
-            visionResult: {
-              result: (summary.visionResult ?? "OK") as any,
-              defectType: "",
-              confidence: 0,
-              inspectionArea: "",
-              imageUrl: null,
-            },
-          };
-          setDetail(partial);
-          setLoading(false);
-        }
-      }
-    };
+    const found = deviceStore.getDetail(deviceId);
+    if (found) {
+      setDetail(found);
+      setLoading(false);
+      return;
+    }
 
-    // 즉시 실행 및 1초마다 반복 실행
-    refreshDetail();
-    const interval = setInterval(refreshDetail, 1000);
+    // 세부정보가 없을 때는 목록 요약에서 임시로 보완하여 표시
+    const summary = deviceStore.get(deviceId);
+    if (summary) {
+      const partial: DeviceDetail = {
+        deviceId: summary.deviceId,
+        modelName: summary.modelName,
+        batchId: "UNKNOWN",
+        sequence: summary.lastSequence ?? 0,
+        machineStatus: summary.machineStatus,
+        temperature: 0,
+        vibrationX: 0,
+        vibrationY: 0,
+        illumination: 0,
+        humidity: 0,
+        timestamp: summary.timestamp,
+        statusInfos: [],
+        visionResult: {
+          result: (summary.visionResult ?? "OK") as any,
+          defectType: "",
+          confidence: 0,
+          inspectionArea: "",
+          imageUrl: null,
+        },
+      };
+      setDetail(partial);
+      setLoading(false);
+      return;
+    }
 
-    return () => clearInterval(interval);
+    const timer = setTimeout(() => {
+      setDetail(deviceStore.getDetail(deviceId) ?? null);
+      setLoading(false);
+    }, 300);
+    return () => clearTimeout(timer);
   }, [deviceId]);
 
   if (loading) {
@@ -244,7 +256,7 @@ export default function DeviceDetailScreen() {
           <InfoRow label="진동 X" value={`${detail.vibrationX.toFixed(3)} g`} />
           <InfoRow label="진동 Y" value={`${detail.vibrationY.toFixed(3)} g`} />
           <InfoRow label="조도" value={`${detail.illumination} lux`} />
-          {/* <InfoRow label="습도" value={`${detail.humidity.toFixed(1)} %`} /> */}
+          <InfoRow label="습도" value={`${detail.humidity.toFixed(1)} %`} />
         </SectionCard>
 
         {/* 상태 코드 */}
@@ -261,6 +273,27 @@ export default function DeviceDetailScreen() {
           <InfoRow label="배치 ID" value={detail.batchId} />
           <InfoRow label="타임스탬프" value={detail.timestamp} />
         </SectionCard>
+
+        {detail.machineStatus === "ERROR" && (
+          <TouchableOpacity
+            style={styles.resolveErrorButton}
+            onPress={() => {
+              resolveDeviceError(deviceId);
+              resolveAlertByDeviceId(deviceId);
+              // UI를 즉시 업데이트하기 위해 detail 상태를 갱신하거나, 이전 화면으로 돌아갈 수 있습니다.
+              // 여기서는 간단히 새로고침을 유도하거나, 상태를 직접 변경하는 로직을 추가할 수 있습니다.
+              // 현재는 mock 데이터이므로, 다음 데이터 업데이트 시 반영될 것입니다.
+              // router.replace("/equipment"); // 목록으로 돌아가기
+              setDetail((prev) =>
+                prev
+                  ? { ...prev, machineStatus: "RUN", statusInfos: [] }
+                  : null,
+              );
+            }}
+          >
+            <Text style={styles.resolveErrorButtonText}>오류 수정 완료</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -441,6 +474,19 @@ const styles = StyleSheet.create({
   },
   infoLabel: { fontSize: 13, color: EQ_COLORS.textSecondary },
   infoValue: { fontSize: 13, fontWeight: "600" },
+
+  resolveErrorButton: {
+    backgroundColor: EQ_COLORS.okGreen,
+    paddingVertical: 15,
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 20,
+  },
+  resolveErrorButtonText: {
+    color: EQ_COLORS.white,
+    fontSize: 16,
+    fontWeight: "700",
+  },
   statusItem: { borderLeftWidth: 3, paddingLeft: 10, marginBottom: 12, gap: 4 },
   statusItemHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
   statusCode: { fontSize: 13, fontWeight: "700", color: EQ_COLORS.textPrimary },

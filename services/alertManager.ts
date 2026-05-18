@@ -37,8 +37,8 @@ export async function registerAlertActions() {
 }
 
 // ── 현재 로그인한 사용자 ID ────────────────────
-let currentUserId: string = "";
-export function setCurrentUserId(userId: string) {
+let currentUserId: string | undefined = undefined;
+export function setCurrentUserId(userId: string | undefined) {
   currentUserId = userId;
 }
 
@@ -76,7 +76,6 @@ export async function handleAlertEvent(
 // ════════════════════════════════════════════════
 async function sendStepNotification(event: AlertEvent, step: EscalationStep) {
   // 푸시 알림은 대상자에게만
-  if (step.targetUser.userId !== currentUserId) return;
   // 팝업은 항상 표시 (현재 앱 사용자에게)
   alertModalStore.show({
     alertId: event.alertId,
@@ -86,6 +85,9 @@ async function sendStepNotification(event: AlertEvent, step: EscalationStep) {
     severity: event.severity,
     timestamp: event.timestamp,
   });
+
+  // 푸시 알림은 대상자에게만
+  if (step.targetUser.userId !== currentUserId) return;
 
   await Notifications.scheduleNotificationAsync({
     content: {
@@ -204,4 +206,17 @@ export function resolveAlert(alertId: string) {
   clearEscalationTimer(alertId);
   activeAlerts.delete(alertId);
   policyCache.delete(alertId);
+}
+
+export function resolveAlertByDeviceId(deviceId: string) {
+  const active = Array.from(activeAlerts.values()).find(
+    (a) =>
+      a.alertEvent.deviceId === deviceId && a.alertEvent.severity !== "LOW",
+  );
+  if (active) {
+    console.log(
+      `[AlertManager] ${deviceId} 장비의 알람 (${active.alertEvent.alertId}) 해결 요청`,
+    );
+    resolveAlert(active.alertEvent.alertId);
+  }
 }
