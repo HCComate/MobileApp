@@ -168,4 +168,28 @@ export const MOCK_PLANS: FactoryPlan[] = [
     type: "meeting",
     priority: "high",
   },
+  {
+    id: "p21",
+    title: "부서 전체 미팅",
+    author: "관리자",
+    date: "2026-06-30",
+    type: "meeting",
+    priority: "high",
+  },
+  {
+    id: "p22",
+    title: "개발팀 미팅",
+    author: "개발팀",
+    date: "2026-06-30",
+    type: "meeting",
+    priority: "high",
+  },
+  {
+    id: "p23",
+    title: "협력 업체 미팅",
+    author: "인사팀",
+    date: "2026-06-30",
+    type: "meeting",
+    priority: "high",
+  },
 ];

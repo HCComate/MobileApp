@@ -1,7 +1,6 @@
-import { Ionicons } from "@expo/vector-icons";
 import { Stack } from "expo-router";
 import React, { useMemo, useState } from "react";
-import { FlatList, StyleSheet, TouchableOpacity, View } from "react-native";
+import { FlatList, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import CalendarView from "../../components/CalendarView";
 import Header from "../../components/Header";
@@ -25,14 +24,11 @@ export default function PlanScreen() {
       }
 
       const dotColor =
-        // 높은 중요도는 빨강
         plan.priority === "high"
           ? "#FF4D4F"
-          : // 중간 중요도는 노랑
-            plan.priority === "medium"
+          : plan.priority === "medium"
             ? "#FFC107"
-            : // 낮은 중요도는 초록
-              "#4CAF50";
+            : "#4CAF50";
 
       const dotKey = `${plan.id}_dot`;
       if (!marks[plan.date].dots.find((d: any) => d.key === dotKey)) {
@@ -58,36 +54,35 @@ export default function PlanScreen() {
         <InfoBanner text="운영 계획 / 주요 일정 관리" />
       </View>
 
-      <ThemedView style={styles.container}>
-        <View style={styles.calendarSection}>
-          <CalendarView
-            selectedDate={selectedDate}
-            markedDates={markedDates}
-            onDateSelect={(date: string) => setSelectedDate(date)}
-          />
-        </View>
+      <View style={styles.calendarSection}>
+        <CalendarView
+          selectedDate={selectedDate}
+          markedDates={markedDates}
+          onDateSelect={(date: string) => setSelectedDate(date)}
+        />
+      </View>
 
-        <View style={styles.listSection}>
+      <ThemedView style={styles.container}>
+        <View style={styles.listTitleSection}>
           <ThemedText type="subtitle" style={styles.sectionTitle}>
             {selectedDate.split("-")[1]}월 {selectedDate.split("-")[2]}일 일정
           </ThemedText>
+        </View>
 
-          <FlatList
-            data={filteredPlans}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
+        <FlatList
+          data={filteredPlans}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <View style={styles.listContainer}>
               <View
                 style={[
                   styles.planItem,
                   {
                     borderLeftColor:
-                      // 높은 중요도는 빨강
                       item.priority === "high"
                         ? "#FF4D4F"
-                        : // 중간 중요도는 노랑
-                          item.priority === "medium"
-                          ? // 낮은 중요도는 초록
-                            "#FFC107"
+                        : item.priority === "medium"
+                          ? "#FFC107"
                           : "#4CAF50",
                     borderLeftWidth: 5,
                   },
@@ -106,20 +101,19 @@ export default function PlanScreen() {
                     </ThemedText>
                   </View>
                 </View>
-                <TouchableOpacity style={styles.deleteButton}>
-                  <Ionicons name="trash-outline" size={22} color="#666" />
-                </TouchableOpacity>
               </View>
-            )}
-            ListEmptyComponent={
+            </View>
+          )}
+          ListEmptyComponent={
+            <View style={styles.listContainer}>
               <ThemedText style={styles.emptyText}>
                 해당 날짜에 예정된 계획이 없습니다.
               </ThemedText>
-            }
-            contentContainerStyle={{ paddingBottom: 20 }}
-            showsVerticalScrollIndicator={false}
-          />
-        </View>
+            </View>
+          }
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+        />
       </ThemedView>
     </SafeAreaView>
   );
@@ -128,9 +122,11 @@ export default function PlanScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   container: { flex: 1 },
+  listContent: { paddingBottom: 20 },
   bannerSection: { paddingHorizontal: 15, marginTop: 15, marginBottom: 5 },
-  calendarSection: { padding: 15 },
-  listSection: { flex: 1, paddingHorizontal: 15 },
+  calendarSection: { paddingHorizontal: 15, paddingBottom: 5 },
+  listTitleSection: { paddingHorizontal: 15 },
+  listContainer: { paddingHorizontal: 15 },
   sectionTitle: { marginBottom: 15, fontSize: 18 },
   planItem: {
     flexDirection: "row",
@@ -152,13 +148,5 @@ const styles = StyleSheet.create({
   },
   authorText: { fontSize: 13, color: "#666" },
   dateText: { fontSize: 13, color: "#999" },
-  deleteButton: {
-    width: 40,
-    height: 40,
-    backgroundColor: "#F5F5F5",
-    borderRadius: 8,
-    justifyContent: "center",
-    alignItems: "center",
-  },
   emptyText: { textAlign: "center", marginTop: 30, opacity: 0.4 },
 });
