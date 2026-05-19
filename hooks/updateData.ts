@@ -1,56 +1,98 @@
 import { useEffect, useState } from "react";
-import { RawLog } from "../mock/logs";
+import { MOCK_RAW_LOGS, RawLog } from "../mock/Logs";
+import { MOCK_DEVICES } from "../mock/devices";
 import api from "../services/api";
 import { alertModalStore } from "../store/alertModalStore";
-import { DeviceSummary } from "../types/equipment";
+import { DeviceSummary, MachineStatus } from "../types/equipment";
 
-/**
- * 1초마다 MOCK_RAW_LOGS를 구독하여 최신 로그 배열을 반환하는 훅
- */
+const USE_API = false;
+
 export function useLogData(): RawLog[] {
   const [logs, setLogs] = useState<RawLog[]>([]);
-
   useEffect(() => {
     const fetchLogs = async () => {
+      if (alertModalStore.isActive()) return;
+      if (!USE_API) {
+        setLogs(
+          [...MOCK_RAW_LOGS].sort(
+            (a, b) =>
+              new Date(b.body?.timestamp || 0).getTime() -
+              new Date(a.body?.timestamp || 0).getTime(),
+          ),
+        );
+        return;
+      }
       try {
-        if (!alertModalStore.isActive()) {
-          const response = await api.get<RawLog[]>("/inspections"); // Assuming /inspections is the endpoint for all logs
-          setLogs(response.data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch logs:", error);
+        const res = await api.get<RawLog[]>("/inspections");
+        setLogs(
+          [...res.data].sort(
+            (a, b) =>
+              new Date(b.body?.timestamp || 0).getTime() -
+              new Date(a.body?.timestamp || 0).getTime(),
+          ),
+        );
+      } catch (e) {
+        setLogs(MOCK_RAW_LOGS);
       }
     };
-
-    fetchLogs(); // Initial fetch
-    const interval = setInterval(fetchLogs, 1000); // Fetch every second
-
+    fetchLogs();
+    const interval = setInterval(fetchLogs, 1000);
     return () => clearInterval(interval);
   }, []);
-
   return logs;
 }
 
 export function useDeviceData() {
   const [devices, setDevices] = useState<DeviceSummary[]>([]);
-
   useEffect(() => {
     const fetchDevices = async () => {
+      if (alertModalStore.isActive()) return;
+      if (!USE_API) {
+        const mappedMock: DeviceSummary[] = MOCK_DEVICES.map((d: any) => {
+          // Status mapping: Mock uses "OFF", UI expects "STOP" or "IDLE"
+          let status: MachineStatus = "IDLE";
+          if (d.status === "RUN") status = "RUN";
+          else if (d.status === "ERROR") status = "ERROR";
+          else if (d.status === "OFF") status = "STOP";
+
+          return {
+            deviceId:
+              d.id || d.device_id || d.deviceId || `DEV_${Math.random()}`,
+            modelName: d.name || d.model_name || d.modelName || "Unknown",
+            machineStatus: status,
+            timestamp: d.timestamp || new Date().toISOString(),
+            visionResult: d.vision_result || d.visionResult || "OK",
+            severity: d.severity || "LOW",
+            lastSequence: d.last_sequence || d.lastSequence || 0,
+          };
+        });
+        setDevices(mappedMock);
+        return;
+      }
       try {
-        if (!alertModalStore.isActive()) {
-          const response = await api.get<DeviceSummary[]>("/devices");
-          setDevices(response.data.data); // Assuming response.data.data contains the array of devices
-        }
-      } catch (error) {
-        console.error("Failed to fetch devices:", error);
+        const res = await api.get("/devices");
+        const rawData = res.data.data || res.data || [];
+        setDevices(
+          rawData.map((d: any) => ({
+            deviceId: d.device_id || d.deviceId || d.id,
+            modelName: d.model_name || d.modelName || d.name,
+            machineStatus: (d.machine_status ||
+              d.machineStatus ||
+              d.status ||
+              "IDLE") as MachineStatus,
+            timestamp: d.timestamp || "",
+            visionResult: d.vision_result || d.visionResult,
+            severity: d.severity,
+            lastSequence: d.last_sequence || d.lastSequence,
+          })),
+        );
+      } catch (e) {
+        setDevices([]);
       }
     };
-
-    fetchDevices(); // Initial fetch
-    const interval = setInterval(fetchDevices, 1000); // Fetch every second
-
+    fetchDevices();
+    const interval = setInterval(fetchDevices, 1000);
     return () => clearInterval(interval);
   }, []);
-
   return devices;
 }

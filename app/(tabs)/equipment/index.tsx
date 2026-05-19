@@ -1,14 +1,8 @@
-// ─────────────────────────────────────────────
-//  app/(tabs)/equipment/index.tsx
-//  장비 통계 메인 화면
-// ─────────────────────────────────────────────
-
-import { useRouter } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Dimensions,
   FlatList,
-  // SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -24,7 +18,7 @@ import {
   STATUS_COLOR,
   STATUS_LABEL,
 } from "../../../constants/equipmentConstants";
-import api from "../../../services/api";
+import { useDeviceData } from "../../../hooks/updateData";
 import { deviceStore } from "../../../store/deviceStore";
 import { DeviceSummary } from "../../../types/equipment";
 
@@ -36,34 +30,21 @@ type ViewMode = "list" | "grid";
 
 export default function EquipmentStatsScreen() {
   const router = useRouter();
-
   const [viewMode, setViewMode] = useState<ViewMode>("list");
-  const [devices, setDevices] = useState<DeviceSummary[]>([]);
   const [currentPage, setCurrentPage] = useState(0);
+
+  // 통합 훅 사용 (USE_API 플래그에 따라 목업/API 자동 전환)
+  const devices = useDeviceData();
 
   const activeWindowRef = useRef<Set<string>>(new Set());
   const listRef = useRef<FlatList<DeviceSummary> | null>(null);
   const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 30 });
 
+  // 스토어 동기화 유지
   useEffect(() => {
-    const fetchDevices = async () => {
-      try {
-        const response = await api.get("/devices");
-        const fetchedDevices: DeviceSummary[] = response.data.data;
-        deviceStore.setAll(fetchedDevices);
-        setDevices(fetchedDevices);
-      } catch (error) {
-        console.error("Failed to fetch devices:", error);
-        deviceStore.setAll([]);
-        setDevices([]);
-      }
-    };
-    fetchDevices();
-  }, []);
-
-  // 요약 목록 변경 시 store 동기화
-  useEffect(() => {
-    deviceStore.setAll(devices);
+    if (devices.length > 0) {
+      deviceStore.setAll(devices);
+    }
   }, [devices]);
 
   const onViewableItemsChanged = useCallback(
@@ -76,7 +57,9 @@ export default function EquipmentStatsScreen() {
         Math.max(...indices) + VIRTUAL_BUFFER,
       );
       const next = new Set<string>();
-      for (let i = min; i <= max; i++) next.add(devices[i].deviceId);
+      for (let i = min; i <= max; i++) {
+        if (devices[i]) next.add(devices[i].deviceId);
+      }
       activeWindowRef.current = next;
     },
     [devices],
@@ -90,17 +73,6 @@ export default function EquipmentStatsScreen() {
 
   const goToDetail = useCallback(
     (deviceId: string) => {
-      try {
-        const d = deviceStore.getDetail(deviceId);
-        const s = deviceStore.get(deviceId);
-        console.log("[EquipmentStats] goToDetail", deviceId, {
-          detailFound: !!d,
-          detail: d,
-          summary: s,
-        });
-      } catch (e) {
-        console.debug("[EquipmentStats] goToDetail error", e);
-      }
       router.push(`/equipment/${deviceId}`);
     },
     [router],
@@ -109,8 +81,18 @@ export default function EquipmentStatsScreen() {
   // ── 목록 아이템 ──────────────────────────────
   const renderListItem = useCallback(
     ({ item }: { item: DeviceSummary }) => {
-      const statusColor = STATUS_COLOR[item.machineStatus];
+      const statusColor = STATUS_COLOR[item.machineStatus] || "#94A3B8";
       const isNG = item.visionResult === "NG";
+
+      const timeStr = item.timestamp || "";
+      const timeDisplay = timeStr.includes(" ")
+        ? timeStr.split(" ")[1].slice(0, 8)
+        : timeStr.includes("T")
+          ? timeStr.split("T")[1].slice(0, 8)
+          : timeStr.length >= 8
+            ? timeStr.slice(0, 8)
+            : "-";
+
       return (
         <TouchableOpacity
           style={[
@@ -129,7 +111,7 @@ export default function EquipmentStatsScreen() {
               <Text style={styles.deviceIdText}>{item.deviceId}</Text>
               <View style={[styles.badge, { backgroundColor: statusColor }]}>
                 <Text style={styles.badgeText}>
-                  {STATUS_LABEL[item.machineStatus]}
+                  {STATUS_LABEL[item.machineStatus] || "알 수 없음"}
                 </Text>
               </View>
             </View>
@@ -153,7 +135,7 @@ export default function EquipmentStatsScreen() {
                     : EQ_COLORS.textMuted
                 }
               />
-              <SummaryItem label="시간" value={item.timestamp.slice(11, 19)} />
+              <SummaryItem label="시간" value={timeDisplay} />
             </View>
           </View>
           <Text style={styles.chevron}>›</Text>
@@ -165,7 +147,7 @@ export default function EquipmentStatsScreen() {
 
   // ── 그리드 아이템 ─────────────────────────────
   const renderGridItem = (item: DeviceSummary) => {
-    const statusColor = STATUS_COLOR[item.machineStatus];
+    const statusColor = STATUS_COLOR[item.machineStatus] || "#94A3B8";
     const isNG = item.visionResult === "NG";
     const shortId = item.deviceId.replace("RASP_PI_", "#");
     return (
@@ -199,6 +181,7 @@ export default function EquipmentStatsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <Stack.Screen options={{ headerShown: false }} />
       <StatusBar
         barStyle="light-content"
         backgroundColor={EQ_COLORS.headerBg}
@@ -210,6 +193,7 @@ export default function EquipmentStatsScreen() {
         <Text style={styles.headerTitle}>장비 통계</Text>
         <View style={{ width: 40 }} />
       </View>
+
       <View style={styles.actionBar}>
         <ScrollView
           horizontal
@@ -256,6 +240,7 @@ export default function EquipmentStatsScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
       <View style={styles.countBar}>
         <Text style={styles.countText}>전체 {devices.length}개 장비</Text>
         {viewMode === "grid" && (
@@ -264,6 +249,7 @@ export default function EquipmentStatsScreen() {
           </Text>
         )}
       </View>
+
       {viewMode === "list" ? (
         <FlatList
           ref={listRef}
@@ -273,10 +259,6 @@ export default function EquipmentStatsScreen() {
           contentContainerStyle={styles.listContent}
           onViewableItemsChanged={onViewableItemsChanged}
           viewabilityConfig={viewabilityConfig.current}
-          windowSize={5}
-          maxToRenderPerBatch={5}
-          initialNumToRender={6}
-          updateCellsBatchingPeriod={100}
           removeClippedSubviews
           showsVerticalScrollIndicator={false}
         />
@@ -460,53 +442,51 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 2,
   },
-  gridCellNG: { backgroundColor: EQ_COLORS.cardNGBg },
+  gridCellNG: {
+    backgroundColor: EQ_COLORS.cardNGBg,
+    borderColor: EQ_COLORS.ngRed,
+  },
   gridThumb: {
-    width: CELL - 16,
-    height: CELL - 36,
-    borderRadius: 6,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
   },
-  gridThumbIcon: { fontSize: 22 },
-  gridId: { fontSize: 10, fontWeight: "700", color: EQ_COLORS.textPrimary },
-  gridDot: { width: 8, height: 8, borderRadius: 4 },
+  gridThumbIcon: { fontSize: 20 },
+  gridId: { fontSize: 12, fontWeight: "700", color: EQ_COLORS.textPrimary },
+  gridDot: { width: 6, height: 6, borderRadius: 3 },
   gridNGBadge: {
     position: "absolute",
-    top: 4,
-    right: 4,
+    top: -5,
+    right: -5,
     backgroundColor: EQ_COLORS.ngRed,
-    borderRadius: 4,
+    borderRadius: 10,
     paddingHorizontal: 4,
     paddingVertical: 1,
   },
-  gridNGText: { color: EQ_COLORS.white, fontSize: 9, fontWeight: "700" },
+  gridNGText: { color: EQ_COLORS.white, fontSize: 8, fontWeight: "800" },
   pagination: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingTop: 16,
-    paddingBottom: 8,
+    marginTop: 20,
+    paddingBottom: 20,
   },
   pageBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    backgroundColor: EQ_COLORS.actionBarBg,
-    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: EQ_COLORS.headerBg,
+    borderRadius: 6,
   },
   pageBtnOff: { backgroundColor: EQ_COLORS.borderMuted },
-  pageBtnText: { color: EQ_COLORS.white, fontSize: 13, fontWeight: "600" },
-  dotRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 8,
-  },
+  pageBtnText: { color: EQ_COLORS.white, fontSize: 12, fontWeight: "600" },
+  dotRow: { alignItems: "center", gap: 8, paddingHorizontal: 10 },
   dot: {
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: EQ_COLORS.borderMuted,
   },
-  dotOn: { backgroundColor: EQ_COLORS.actionBarBg, width: 20, borderRadius: 4 },
+  dotOn: { backgroundColor: EQ_COLORS.headerBg, width: 12 },
 });

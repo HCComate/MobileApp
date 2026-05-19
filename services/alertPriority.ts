@@ -1,19 +1,6 @@
 // ─────────────────────────────────────────────
 //  services/alertPriority.ts
 //  알람 우선순위 계산 및 에스컬레이션 단계 생성
-//
-//  에스컬레이션 순서 (한 명씩 순서대로 전송):
-//  1. 해당 기기 담당자 + 근무 중 + IDLE
-//  2. 해당 기기 담당자 + 근무 중 + MONITORING
-//  3. 해당 기기 담당자 + 근무 중 + WORKING
-//  4. 같은 직급(OPERATOR) + 근무 중 + IDLE
-//  5. 같은 직급(OPERATOR) + 근무 중 + MONITORING
-//  6. 같은 직급(OPERATOR) + 근무 중 + WORKING
-//  7. TECHNICIAN + 근무 중 + IDLE
-//  8. TECHNICIAN + 근무 중 + MONITORING
-//  9. TECHNICIAN + 근무 중 + WORKING
-//  10. MASTER
-//  11. 근무 외 담당자 (OFF_DUTY)
 // ─────────────────────────────────────────────
 
 import {
@@ -41,7 +28,6 @@ const WORK_STATUS_PRIORITY: Record<WorkStatus, number> = {
 };
 
 // ── 심각도별 타임아웃 (초) ────────────────────
-//  TODO: 실제 운영 환경에 맞게 조정
 const SEVERITY_TIMEOUT: Record<AlertSeverity, number> = {
   LOW: 120,
   MEDIUM: 60,
@@ -68,7 +54,6 @@ export function buildEscalationPolicy(
   const steps: EscalationStep[] = [];
   const addedIds = new Set<string>();
 
-  // ── 헬퍼: 유저 목록을 한 명씩 step으로 추가 ──
   const addSteps = (users: AlertUser[]) => {
     sortByWorkStatus(users).forEach((user) => {
       if (addedIds.has(user.userId)) return;
@@ -81,17 +66,14 @@ export function buildEscalationPolicy(
     });
   };
 
-  // 1~3. 해당 기기 담당자 + 근무 중 (IDLE → MONITORING → WORKING 순)
   const assignedOnDuty = allUsers.filter(
     (u) =>
       u.assignedDevices.includes(event.deviceId) && u.shiftStatus === "ON_DUTY",
   );
   addSteps(assignedOnDuty);
 
-  // 담당자 직급 파악 (없으면 OPERATOR 기준)
   const assignedRole: UserRole = assignedOnDuty[0]?.role ?? "OPERATOR";
 
-  // 4~6. 같은 직급 + 근무 중 (담당자 제외)
   const sameRoleOnDuty = allUsers.filter(
     (u) =>
       !addedIds.has(u.userId) &&
@@ -100,7 +82,6 @@ export function buildEscalationPolicy(
   );
   addSteps(sameRoleOnDuty);
 
-  // 7~9. TECHNICIAN + 근무 중 (이미 추가된 사람 제외)
   if (assignedRole !== "TECHNICIAN") {
     const techOnDuty = allUsers.filter(
       (u) =>
@@ -111,13 +92,11 @@ export function buildEscalationPolicy(
     addSteps(techOnDuty);
   }
 
-  // 10. MASTER (근무 상태 무관)
   const masters = allUsers.filter(
     (u) => !addedIds.has(u.userId) && u.role === "MASTER",
   );
   addSteps(masters);
 
-  // 11. 근무 외 담당자 (OFF_DUTY)
   const assignedOffDuty = allUsers.filter(
     (u) =>
       !addedIds.has(u.userId) &&
@@ -126,19 +105,9 @@ export function buildEscalationPolicy(
   );
   addSteps(assignedOffDuty);
 
-  // 단계가 없으면 전체 사용자 대상
   if (steps.length === 0) {
     addSteps(allUsers);
   }
-
-  console.log(
-    "[Priority] assignedOnDuty:",
-    assignedOnDuty.map((u) => u.name),
-  );
-  console.log(
-    "[Priority] steps:",
-    steps.map((s) => `${s.stepIndex}:${s.targetUser.name}`),
-  );
 
   return { severity: event.severity, steps };
 }

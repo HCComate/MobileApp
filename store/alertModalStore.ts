@@ -40,7 +40,7 @@ export const alertModalStore = {
 
   subscribe: (listener: Listener) => {
     _listeners.push(listener);
-    if (_data) listener(_data); // ← 이 줄 있는지 확인
+    if (_data) listener(_data);
     return () => {
       _listeners = _listeners.filter((l) => l !== listener);
     };
