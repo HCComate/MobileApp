@@ -1,16 +1,19 @@
 import { useEffect, useState } from "react";
 import { MOCK_RAW_LOGS, RawLog } from "../mock/Logs";
 import { MOCK_DEVICES } from "../mock/devices";
-import api from "../services/api";
-import { alertModalStore } from "../store/alertModalStore";
+import apiClient from "../services/apiClient"; // api 대신 apiClient 사용
+import { fetchDeviceSummaries } from "../services/apiService"; // 실제 서버 데이터 호출 함수
 import {
   DeviceSummary,
   MachineStatus,
   Severity,
-  VisionResult,
+  VisionStatus, // VisionResult 대신 VisionStatus 사용
 } from "../types/equipment";
 
-const USE_API = false;
+// --- 데이터 소스 전환 플래그 ---
+// 이 값을 true로 바꾸면 실제 서버에서 데이터를 가져옵니다.
+const USE_REAL_SERVER = false;
+// -------------------------------
 
 /**
  * [IDLE 시간 변경 설정]
@@ -23,8 +26,8 @@ export function useLogData(): RawLog[] {
   const [logs, setLogs] = useState<RawLog[]>([]);
   useEffect(() => {
     const fetchLogs = async () => {
-      if (alertModalStore.isActive()) return;
-      if (!USE_API) {
+      // 가짜 데이터 모드
+      if (!USE_REAL_SERVER) {
         setLogs(
           [...MOCK_RAW_LOGS].sort(
             (a, b) =>
@@ -34,8 +37,10 @@ export function useLogData(): RawLog[] {
         );
         return;
       }
+
+      // 실제 서버 모드
       try {
-        const res = await api.get<RawLog[]>("/inspections");
+        const res = await apiClient.get<RawLog[]>("/api/inspections");
         setLogs(
           [...res.data].sort(
             (a, b) =>
@@ -44,9 +49,11 @@ export function useLogData(): RawLog[] {
           ),
         );
       } catch (e) {
-        setLogs(MOCK_RAW_LOGS);
+        console.error("[useLogData] 서버 데이터 로드 실패:", e);
+        setLogs(MOCK_RAW_LOGS); // 실패 시 가짜 데이터로 폴백
       }
     };
+
     fetchLogs();
     const interval = setInterval(fetchLogs, 500);
     return () => clearInterval(interval);
@@ -59,9 +66,20 @@ export function useDeviceData() {
   const [devices, setDevices] = useState<DeviceSummary[]>([]);
 
   useEffect(() => {
-    const updateDevices = () => {
-      if (alertModalStore.isActive()) return;
+    const updateDevices = async () => {
+      // 실제 서버 모드
+      if (USE_REAL_SERVER) {
+        try {
+          const realDevices = await fetchDeviceSummaries();
+          setDevices(realDevices);
+          return;
+        } catch (e) {
+          console.error("[useDeviceData] 서버 데이터 로드 실패:", e);
+          // 실패 시 가짜 데이터 로직으로 진행
+        }
+      }
 
+      // 가짜 데이터 처리 로직
       const mappedDevices: DeviceSummary[] = MOCK_DEVICES.map((device) => {
         const deviceLogs = logs.filter(
           (l) => l.header?.device_id === device.id,
@@ -70,7 +88,7 @@ export function useDeviceData() {
 
         let status: MachineStatus = "STOP";
         let timestamp = new Date().toISOString();
-        let visionResult: VisionResult = "OK";
+        let visionResult: VisionStatus = "OK"; // VisionStatus로 타입 수정
         let severity: Severity = "LOW";
         let lastSequence = 0;
 
@@ -80,7 +98,6 @@ export function useDeviceData() {
           const currentLogStatus = (latestLog.body?.machine_status ||
             "STOP") as MachineStatus;
 
-          // [수정] ERROR 상태인 장비는 IDLE 체크 대상에서 제외
           if (
             currentLogStatus !== "ERROR" &&
             now - logTime > IDLE_THRESHOLD_MS
@@ -91,8 +108,9 @@ export function useDeviceData() {
           }
 
           timestamp = latestLog.body?.timestamp || timestamp;
-          visionResult = (latestLog.body?.vision_result?.result ||
-            "OK") as VisionResult;
+          // unknown을 거쳐 VisionStatus로 안전하게 캐스팅
+          visionResult = latestLog.body?.vision_result
+            ?.result as unknown as VisionStatus;
           severity = (latestLog.body?.status_info?.[0]?.severity ||
             "LOW") as Severity;
           lastSequence = latestLog.body?.sequence || 0;
