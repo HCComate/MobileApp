@@ -56,8 +56,8 @@ export interface RawLog {
 const DEVICE_COUNT = 25;
 const MAX_LOG_CAPACITY = 5000;
 const INITIAL_DATA_COUNT = 100;
-const ERROR_RATE = 0.03;
-const RECOVERY_RATE = 0.05;
+const ERROR_RATE = 0.000003;
+const RECOVERY_RATE = 0.0000005;
 
 let globalSequence = 0;
 

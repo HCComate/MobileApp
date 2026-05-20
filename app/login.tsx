@@ -33,7 +33,7 @@ export default function LoginScreen() {
       return;
     }
 
-    // 서버 모드가 꺼져있을 때는 기존 로컬 목업 로직 작동!
+    // 서버 모드가 꺼져있을 때는 기존 로컬 목업 로직 작동
     if (!isServerMode) {
       console.log("[Login] 로컬 목업 데이터로 가짜 로그인 시도");
       const matchedUser = MOCK_USER_LIST.find(
