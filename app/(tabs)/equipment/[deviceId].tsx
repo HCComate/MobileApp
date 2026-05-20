@@ -1,14 +1,14 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useMemo } from "react";
 import {
   ActivityIndicator,
-  Dimensions,
+  Alert as RNAlert,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "../../../components/Header";
@@ -18,141 +18,72 @@ import {
   STATUS_COLOR,
   STATUS_LABEL,
 } from "../../../constants/equipmentConstants";
-import { MOCK_DEVICES } from "../../../mock/devices";
+import { useLogData } from "../../../hooks/updateData";
 import { resolveDeviceError } from "../../../mock/Logs";
 import { resolveAlertByDeviceId } from "../../../services/alertManager";
-import { deviceStore } from "../../../store/deviceStore";
 import {
   DeviceDetail,
+  Direction,
   MachineStatus,
-  Severity,
   VisionResult,
 } from "../../../types/equipment";
-
-const { width: SW } = Dimensions.get("window");
-
-type CameraTab = "front" | "side" | "rear";
-const CAM_TABS: { label: string; value: CameraTab }[] = [
-  { label: "전면", value: "front" },
-  { label: "측면", value: "side" },
-  { label: "후면", value: "rear" },
-];
 
 export default function DeviceDetailScreen() {
   const { deviceId } = useLocalSearchParams<{ deviceId: string }>();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<CameraTab>("front");
-  const [detail, setDetail] = useState<DeviceDetail | null>(null);
-  const [loading, setLoading] = useState(true);
+  const logs = useLogData();
 
-  useEffect(() => {
-    const updateDetail = () => {
-      if (!deviceId) return;
+  const currentDeviceLog = useMemo(() => {
+    return logs.find((l) => l.header?.device_id === deviceId);
+  }, [logs, deviceId]);
 
-      const currentDetail = deviceStore.getDetail(deviceId);
-      if (currentDetail) {
-        setDetail(currentDetail);
-      } else {
-        const summary = deviceStore.get(deviceId);
-        if (summary) {
-          // Summary에서 상세 정보로 변환 시 누락된 필드 채우기
-          setDetail({
-            deviceId: summary.deviceId,
-            batchId: `BATCH_${Math.floor(Math.random() * 10000)}`,
-            modelName: summary.modelName,
-            sequence: summary.lastSequence || Math.floor(Math.random() * 1000),
-            machineStatus: summary.machineStatus,
-            temperature: parseFloat(
-              (Math.random() * (30 - 20) + 20).toFixed(1),
-            ),
-            vibrationX: parseFloat(
-              (Math.random() * (0.5 - 0.1) + 0.1).toFixed(2),
-            ),
-            vibrationY: parseFloat(
-              (Math.random() * (0.5 - 0.1) + 0.1).toFixed(2),
-            ),
-            illumination: Math.floor(Math.random() * (1000 - 300) + 300),
-            timestamp: summary.timestamp,
-            statusInfos: [], // 상세 페이지에서 별도로 관리될 수 있음
-            visionResult: {
-              result: (summary.visionResult || "OK") as VisionResult,
-              defectType: "N/A",
-              confidence: parseFloat(Math.random().toFixed(2)),
-              inspectionArea: "N/A",
-              imageUrl: null,
-            },
-          });
-        } else {
-          // MOCK_DEVICES에서 직접 로드 시 상세 정보 생성
-          const mock = (MOCK_DEVICES as any[]).find((d) => d.id === deviceId);
-          if (mock) {
-            setDetail({
-              deviceId: mock.id,
-              batchId: `BATCH_${Math.floor(Math.random() * 10000)}`,
-              modelName: mock.name,
-              sequence: Math.floor(Math.random() * 1000),
-              machineStatus: (mock.status === "OFF"
-                ? "STOP"
-                : mock.status) as MachineStatus,
-              temperature: parseFloat(
-                (Math.random() * (30 - 20) + 20).toFixed(1),
-              ),
-              vibrationX: parseFloat(
-                (Math.random() * (0.5 - 0.1) + 0.1).toFixed(2),
-              ),
-              vibrationY: parseFloat(
-                (Math.random() * (0.5 - 0.1) + 0.1).toFixed(2),
-              ),
-              illumination: Math.floor(Math.random() * (1000 - 300) + 300),
-              timestamp: new Date().toISOString(),
-              statusInfos: [],
-              visionResult: {
-                result: (Math.random() > 0.8 ? "NG" : "OK") as VisionResult,
-                defectType: "N/A",
-                confidence: parseFloat(Math.random().toFixed(2)),
-                inspectionArea: "N/A",
-                imageUrl: null,
-              },
-            });
-          }
-        }
-      }
-      setLoading(false);
+  const detail: DeviceDetail | null = useMemo(() => {
+    if (!currentDeviceLog) return null;
+    const body = currentDeviceLog.body;
+    return {
+      deviceId: deviceId as string,
+      batchId: currentDeviceLog.header.batch_id,
+      modelName: currentDeviceLog.header.model_name,
+      sequence: body.sequence,
+      machineStatus: body.machine_status as MachineStatus,
+      temperature: body.sensor_data.temperature,
+      vibrationX: body.sensor_data.vibration_x,
+      vibrationY: body.sensor_data.vibration_y,
+      illumination: body.sensor_data.illumination,
+      timestamp: body.timestamp,
+      statusInfos: body.status_info.map((info) => ({
+        code: info.code,
+        msg: info.msg,
+        severity: info.severity,
+        direction: info.direction as Direction,
+        partLocation: info.part_location as string, // PartLocation 타입 대신 string 사용
+        isCaptureRequired: info.is_capture_required,
+      })),
+      visionResult: {
+        result: body.vision_result.result as VisionResult,
+        defectType: body.vision_result.defect_type,
+        confidence: body.vision_result.confidence,
+        inspectionArea: body.vision_result.inspection_area,
+        imageUrl: body.vision_result.image_url,
+      },
     };
-
-    const interval = setInterval(updateDetail, 1000);
-    updateDetail();
-
-    return () => clearInterval(interval);
-  }, [deviceId]);
+  }, [currentDeviceLog, deviceId]);
 
   const handleResolveError = async () => {
-    if (!detail || !deviceId) return;
-
-    await resolveDeviceError(deviceId);
-    await resolveAlertByDeviceId(deviceId);
-
-    const updatedSummary = {
-      deviceId: detail.deviceId,
-      modelName: detail.modelName,
-      machineStatus: "RUN" as MachineStatus,
-      timestamp: new Date().toISOString(),
-      visionResult: "OK" as VisionResult,
-      severity: "LOW" as Severity,
-      lastSequence: detail.sequence,
-    };
-    deviceStore.update(updatedSummary);
-    setDetail((prev) =>
-      prev ? { ...prev, machineStatus: "RUN", statusInfos: [] } : null,
-    );
-    router.back();
+    if (!deviceId) return;
+    try {
+      await resolveDeviceError(deviceId);
+      await resolveAlertByDeviceId(deviceId);
+      RNAlert.alert("알림", "오류 수정이 완료되었습니다.");
+    } catch (error) {
+      RNAlert.alert("오류", "처리에 실패했습니다.");
+    }
   };
 
-  if (loading || !detail) {
+  if (!detail) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#3B82F6" />
-        <Text style={styles.loadingText}>장비 상세 정보를 불러오는 중...</Text>
       </SafeAreaView>
     );
   }
@@ -167,9 +98,7 @@ export default function DeviceDetailScreen() {
         barStyle="light-content"
         backgroundColor={EQ_COLORS.headerBg}
       />
-
       <Header />
-
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
@@ -177,19 +106,11 @@ export default function DeviceDetailScreen() {
         <View style={styles.statusSection}>
           <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
             <Text style={styles.statusBadgeText}>
-              {STATUS_LABEL[detail.machineStatus] || "알 수 없음"}
+              {STATUS_LABEL[detail.machineStatus]}
             </Text>
           </View>
           <Text style={styles.deviceId}>{detail.deviceId}</Text>
           <Text style={styles.modelName}>{detail.modelName}</Text>
-          <Text style={styles.timestamp}>
-            최근 업데이트:{" "}
-            {detail.timestamp
-              ? detail.timestamp.includes("T")
-                ? detail.timestamp.split("T")[1].split(".")[0]
-                : detail.timestamp
-              : "-"}
-          </Text>
         </View>
 
         <View style={styles.infoCard}>
@@ -224,42 +145,33 @@ export default function DeviceDetailScreen() {
             상태 정보 ({detail.statusInfos.length})
           </Text>
           <View style={styles.divider} />
-          {detail.statusInfos.length > 0 ? (
-            detail.statusInfos.map((status, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.statusItem,
-                  {
-                    borderLeftColor:
-                      SEVERITY_COLOR[status.severity] || "#CBD5E1",
-                  },
-                ]}
-              >
-                <View style={styles.statusItemHeader}>
-                  <Text style={styles.statusCode}>{status.code}</Text>
-                  <View
-                    style={[
-                      styles.severityBadge,
-                      {
-                        backgroundColor:
-                          SEVERITY_COLOR[status.severity] || "#CBD5E1",
-                      },
-                    ]}
-                  >
-                    <Text style={styles.severityText}>{status.severity}</Text>
-                  </View>
-                </View>
-                <Text style={styles.statusMsg}>{status.msg}</Text>
-                <View style={styles.chipRow}>
-                  <Chip label={status.direction} />
-                  <Chip label={status.partLocation} />
+          {detail.statusInfos.map((status, index) => (
+            <View
+              key={index}
+              style={[
+                styles.statusItem,
+                {
+                  borderLeftColor: SEVERITY_COLOR[status.severity] || "#CBD5E1",
+                },
+              ]}
+            >
+              <View style={styles.statusItemHeader}>
+                <Text style={styles.statusCode}>{status.code}</Text>
+                <View
+                  style={[
+                    styles.severityBadge,
+                    {
+                      backgroundColor:
+                        SEVERITY_COLOR[status.severity] || "#CBD5E1",
+                    },
+                  ]}
+                >
+                  <Text style={styles.severityText}>{status.severity}</Text>
                 </View>
               </View>
-            ))
-          ) : (
-            <Text style={styles.statusMsg}>특이 사항 없음</Text>
-          )}
+              <Text style={styles.statusMsg}>{status.msg}</Text>
+            </View>
+          ))}
         </View>
 
         {isError && (
@@ -290,12 +202,6 @@ const InfoRow = ({
   </View>
 );
 
-const Chip = ({ label }: { label: string }) => (
-  <View style={styles.chip}>
-    <Text style={styles.chipText}>{label}</Text>
-  </View>
-);
-
 const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
@@ -303,7 +209,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#F8FAFC",
   },
-  loadingText: { marginTop: 10, fontSize: 14, color: "#64748B" },
   container: { flex: 1, backgroundColor: "#F8FAFC" },
   scrollView: { flex: 1, padding: 16 },
   statusSection: {
@@ -323,7 +228,6 @@ const styles = StyleSheet.create({
   statusBadgeText: { color: "#FFF", fontSize: 14, fontWeight: "700" },
   deviceId: { fontSize: 26, fontWeight: "800", color: "#FFF" },
   modelName: { fontSize: 14, color: "#FFF", opacity: 0.8, marginTop: 4 },
-  timestamp: { fontSize: 12, color: "#FFF", opacity: 0.6, marginTop: 10 },
   infoCard: {
     backgroundColor: "#FFF",
     borderRadius: 12,
@@ -361,16 +265,7 @@ const styles = StyleSheet.create({
   statusCode: { fontWeight: "700", fontSize: 14, color: "#1E293B" },
   severityBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
   severityText: { color: "#FFF", fontSize: 10, fontWeight: "700" },
-  statusMsg: { fontSize: 13, color: "#475569", marginBottom: 8 },
-  chipRow: { flexDirection: "row", gap: 6 },
-  chip: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#CBD5E1",
-  },
-  chipText: { fontSize: 10, color: "#64748B", fontWeight: "600" },
+  statusMsg: { fontSize: 13, color: "#475569" },
   resolveErrorButton: {
     backgroundColor: "#10B981",
     padding: 16,

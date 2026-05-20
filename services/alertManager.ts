@@ -39,7 +39,7 @@ export function setCurrentUserId(userId: string | undefined) {
 }
 
 const activeAlerts = new Map<string, ActiveAlert>();
-const alertHistory: ActiveAlert[] = []; // 알람 이력 저장용 배열 추가
+const alertHistory: ActiveAlert[] = []; // 알람 이력 저장용 배열
 const escalationTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const policyCache = new Map<string, EscalationPolicy>();
 
@@ -64,11 +64,17 @@ export async function handleAlertEvent(
     createdAt: new Date().toISOString(),
   };
 
-  activeAlerts.set(event.alertId, newActiveAlert);
-  alertHistory.unshift(newActiveAlert); // 이력의 가장 앞에 추가 (최신순)
+  // 1. 이력에 추가
+  alertHistory.unshift(newActiveAlert);
+  if (alertHistory.length > 1000) alertHistory.pop();
 
+  // 2. 팝업 및 에스컬레이션 처리
+  activeAlerts.set(event.alertId, newActiveAlert);
   await sendStepNotification(event, firstStep);
   startEscalationTimer(event.alertId, firstStep.timeoutSec, allUsers);
+  console.log(
+    `[AlertManager] 알람 활성화: ${event.deviceId} (${event.severity})`,
+  );
 }
 
 // ════════════════════════════════════════════════
@@ -104,7 +110,7 @@ async function sendStepNotification(event: AlertEvent, step: EscalationStep) {
 }
 
 // ════════════════════════════════════════════════
-//  타이머 및 에스컬레이션 로직 (기존과 동일)
+//  타이머 및 에스컬레이션 로직
 // ════════════════════════════════════════════════
 function startEscalationTimer(
   alertId: string,
@@ -182,13 +188,11 @@ export function getAllAlertHistory(): ActiveAlert[] {
 export function resolveAlert(alertId: string) {
   clearEscalationTimer(alertId);
   activeAlerts.delete(alertId);
-  // 이력에서는 삭제하지 않고 상태만 업데이트하거나 유지
 }
 
 export function resolveAlertByDeviceId(deviceId: string) {
   const active = Array.from(activeAlerts.values()).find(
-    (a) =>
-      a.alertEvent.deviceId === deviceId && a.alertEvent.severity !== "LOW",
+    (a) => a.alertEvent.deviceId === deviceId,
   );
   if (active) resolveAlert(active.alertEvent.alertId);
 }
