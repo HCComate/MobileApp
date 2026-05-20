@@ -1,13 +1,3 @@
-// ─────────────────────────────────────────────
-//  mocks/deviceMocks.ts
-//  장비 더미 데이터 (rawLogs에서 파생)
-//  - DeviceSummary: 목록 화면용
-//  - DeviceDetail: 상세 화면용
-//
-//  ⚠️ 테스트 전용
-//  TODO: 통신 연동 시 API 호출로 교체
-// ─────────────────────────────────────────────
-
 import { DeviceDetail, DeviceSummary, StatusInfo } from "../types/equipment";
 import { getDeviceIdsFromLogs, getLatestLogByDevice } from "./Logs";
 
@@ -15,7 +5,7 @@ import { getDeviceIdsFromLogs, getLatestLogByDevice } from "./Logs";
 //  RawLog → DeviceSummary 변환
 // ─────────────────────────────────────────────
 export const generateMockSummaries = (): DeviceSummary[] =>
-  getDeviceIdsFromLogs().map((deviceId) => {
+  getDeviceIdsFromLogs().map((deviceId: string) => {
     const log = getLatestLogByDevice(deviceId)!;
     return {
       deviceId: log.header.device_id,
@@ -32,7 +22,7 @@ export const generateMockSummaries = (): DeviceSummary[] =>
 //  RawLog → DeviceDetail 변환
 // ─────────────────────────────────────────────
 export const generateMockDetails = (): DeviceDetail[] =>
-  getDeviceIdsFromLogs().map((deviceId) => {
+  getDeviceIdsFromLogs().map((deviceId: string) => {
     const log = getLatestLogByDevice(deviceId)!;
     return {
       deviceId: log.header.device_id,
@@ -44,9 +34,8 @@ export const generateMockDetails = (): DeviceDetail[] =>
       vibrationX: log.body.sensor_data.vibration_x,
       vibrationY: log.body.sensor_data.vibration_y,
       illumination: log.body.sensor_data.illumination,
-      // humidity: log.body.sensor_data.humidity, // ← rawLogs에서 가져옴
       timestamp: log.body.timestamp,
-      statusInfos: log.body.status_info.map((s) => ({
+      statusInfos: log.body.status_info.map((s: any) => ({
         code: s.code,
         msg: s.msg,
         severity: s.severity as any,

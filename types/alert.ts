@@ -64,6 +64,7 @@ export interface ActiveAlert {
   alertEvent: AlertEvent;
   currentStepIndex: number;
   respondedBy?: string;
+  acceptedBy?: string; // ✅ 추가됨: 알람을 최종 수락한 사용자 ID
   response?: AlertResponse;
   createdAt: string;
   escalatedAt?: string;
