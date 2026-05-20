@@ -1,33 +1,29 @@
 import { useEffect, useState } from "react";
 import { MOCK_RAW_LOGS, RawLog } from "../mock/Logs";
 import { MOCK_DEVICES } from "../mock/devices";
-import apiClient from "../services/apiClient"; // api 대신 apiClient 사용
-import { fetchDeviceSummaries } from "../services/apiService"; // 실제 서버 데이터 호출 함수
+import { isServerMode } from "../mock/userData";
+import apiClient from "../services/apiClient";
 import {
   DeviceSummary,
   MachineStatus,
   Severity,
-  VisionStatus, // VisionResult 대신 VisionStatus 사용
+  VisionStatus,
 } from "../types/equipment";
-
-// --- 데이터 소스 전환 플래그 ---
-// 이 값을 true로 바꾸면 실제 서버에서 데이터를 가져옵니다.
-const USE_REAL_SERVER = false;
-// -------------------------------
 
 /**
  * [IDLE 시간 변경 설정]
  * 아래 값을 밀리초(ms) 단위로 수정하여 IDLE 판정 시간을 조절할 수 있습니다.
- * 예: 5000 = 5초, 10000 = 10초
  */
 const IDLE_THRESHOLD_MS = 10000;
 
 export function useLogData(): RawLog[] {
   const [logs, setLogs] = useState<RawLog[]>([]);
+
   useEffect(() => {
     const fetchLogs = async () => {
-      // 가짜 데이터 모드
-      if (!USE_REAL_SERVER) {
+      // 1. 가짜 데이터 모드 (MOCK)
+      if (!isServerMode) {
+        console.log("[useLogData] 현재 모드: MOCK");
         setLogs(
           [...MOCK_RAW_LOGS].sort(
             (a, b) =>
@@ -38,26 +34,73 @@ export function useLogData(): RawLog[] {
         return;
       }
 
-      // 실제 서버 모드
+      // 2. 실제 서버 모드 (SERVER)
       try {
-        const res = await apiClient.get<RawLog[]>("/api/inspections");
-        setLogs(
-          [...res.data].sort(
-            (a, b) =>
-              new Date(b.body?.timestamp || 0).getTime() -
-              new Date(a.body?.timestamp || 0).getTime(),
-          ),
+        const res = await apiClient.get<{ data: any[] }>(
+          "/api/inspections/recent",
         );
+
+        if (res.data && res.data.data) {
+          const serverData = res.data.data;
+          console.log(`[useLogData] SERVER 수신 성공 (${serverData.length}건)`);
+
+          const mappedLogs: RawLog[] = serverData.map((item: any) => ({
+            header: {
+              device_id: item.deviceId,
+              batch_id: item.batchId,
+              model_name: item.modelName,
+              assigned_worker_id: "",
+            },
+            body: {
+              sequence: item.sequence,
+              machine_status: item.machineStatus as any,
+              status_info:
+                item.statusInfos?.map((si: any) => ({
+                  code: si.code,
+                  msg: si.msg,
+                  severity: si.severity,
+                  direction: si.direction,
+                  part_location: si.partLocation,
+                  is_capture_required: si.isCaptureRequired,
+                })) || [],
+              vision_result: {
+                result: item.visionResult?.result || "OK",
+                defect_type: item.visionResult?.defectType || "NONE",
+                confidence: item.visionResult?.confidence || 0,
+                inspection_area: item.visionResult?.inspectionArea || "ALL",
+                image_url: item.visionResult?.imageUrl || null,
+              },
+              sensor_data: {
+                temperature: item.temperature,
+                vibration_x: item.vibrationX,
+                vibration_y: item.vibrationY,
+                illumination: item.illumination,
+                humidity: item.humidity || 0,
+              },
+              timestamp: item.timestamp,
+            },
+          }));
+
+          const sortedLogs = mappedLogs.sort(
+            (a, b) =>
+              new Date(b.body.timestamp).getTime() -
+              new Date(a.body.timestamp).getTime(),
+          );
+          setLogs(sortedLogs);
+        } else {
+          setLogs([]);
+        }
       } catch (e) {
-        console.error("[useLogData] 서버 데이터 로드 실패:", e);
-        setLogs(MOCK_RAW_LOGS); // 실패 시 가짜 데이터로 폴백
+        console.error("[useLogData] SERVER 데이터 로드 실패:", e);
+        setLogs(MOCK_RAW_LOGS);
       }
     };
 
     fetchLogs();
-    const interval = setInterval(fetchLogs, 500);
+    const interval = setInterval(fetchLogs, 1000);
     return () => clearInterval(interval);
   }, []);
+
   return logs;
 }
 
@@ -67,19 +110,38 @@ export function useDeviceData() {
 
   useEffect(() => {
     const updateDevices = async () => {
-      // 실제 서버 모드
-      if (USE_REAL_SERVER) {
+      // 1. 실제 서버 모드
+      if (isServerMode) {
         try {
-          const realDevices = await fetchDeviceSummaries();
-          setDevices(realDevices);
-          return;
+          const res = await apiClient.get<{ data: any[] }>("/api/devices");
+
+          if (res.data && res.data.data) {
+            console.log(
+              `[useDeviceData] SERVER 기기 목록 수신 성공 (${res.data.data.length}건)`,
+            );
+
+            const mappedDevices: DeviceSummary[] = res.data.data.map(
+              (d: any) => ({
+                deviceId: d.deviceId,
+                modelName: d.modelName,
+                machineStatus: d.machineStatus as MachineStatus,
+                timestamp: d.timestamp,
+                visionResult: d.visionResult as VisionStatus,
+                severity: d.severity as Severity,
+                lastSequence: d.lastSequence || 0,
+              }),
+            );
+
+            setDevices(mappedDevices);
+            return;
+          }
         } catch (e) {
-          console.error("[useDeviceData] 서버 데이터 로드 실패:", e);
-          // 실패 시 가짜 데이터 로직으로 진행
+          console.error("[useDeviceData] SERVER 기기 데이터 로드 실패:", e);
         }
       }
 
-      // 가짜 데이터 처리 로직
+      // 2. 가짜 데이터 처리 로직 (MOCK 모드이거나 서버 호출 실패 시)
+      console.log("[useDeviceData] MOCK/Fallback 데이터 로직 실행");
       const mappedDevices: DeviceSummary[] = MOCK_DEVICES.map((device) => {
         const deviceLogs = logs.filter(
           (l) => l.header?.device_id === device.id,
@@ -88,7 +150,7 @@ export function useDeviceData() {
 
         let status: MachineStatus = "STOP";
         let timestamp = new Date().toISOString();
-        let visionResult: VisionStatus = "OK"; // VisionStatus로 타입 수정
+        let visionResult: VisionStatus = "OK";
         let severity: Severity = "LOW";
         let lastSequence = 0;
 
@@ -108,7 +170,6 @@ export function useDeviceData() {
           }
 
           timestamp = latestLog.body?.timestamp || timestamp;
-          // unknown을 거쳐 VisionStatus로 안전하게 캐스팅
           visionResult = latestLog.body?.vision_result
             ?.result as unknown as VisionStatus;
           severity = (latestLog.body?.status_info?.[0]?.severity ||

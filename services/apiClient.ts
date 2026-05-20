@@ -10,11 +10,13 @@ const getBaseUrl = () => {
   const user =
     MOCK_USER_LIST.find((u) => u.loginId === CURRENT_LOGIN_ID) ||
     MOCK_USER_LIST[0];
-  return `http://${user.serverSettings.ip}:${user.serverSettings.port}`;
+  //return `http://${user.serverSettings.ip}:${user.serverSettings.port}`;
+  return `http://10.30.5.94:8080`; //학교 사용용
 };
 
 const apiClient = axios.create({
-  baseURL: getBaseUrl(),
+  //baseURL: getBaseUrl(),
+  baseURL: "http://10.30.5.94:8080",
   timeout: 5000,
   headers: {
     "Content-Type": "application/json",

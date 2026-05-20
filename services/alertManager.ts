@@ -34,7 +34,7 @@ export async function registerAlertActions() {
 }
 
 // ── 현재 로그인한 사용자 ID ────────────────────
-let currentUserId: string | undefined = "9999999"; // 기본값 관리자로 설정
+let currentUserId: string | undefined = undefined;
 export function setCurrentUserId(userId: string | undefined) {
   currentUserId = userId;
 }
