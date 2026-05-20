@@ -1,5 +1,5 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert as RNAlert,
@@ -8,7 +8,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "../../../components/Header";
@@ -20,21 +20,40 @@ import {
 } from "../../../constants/equipmentConstants";
 import { useLogData } from "../../../hooks/updateData";
 import { resolveDeviceError } from "../../../mock/Logs";
-import { resolveAlertByDeviceId } from "../../../services/alertManager";
+import {
+  getActiveAlertByDeviceId,
+  isCurrentUserAcceptor,
+  resolveAlertByDeviceId,
+} from "../../../services/alertManager";
 import {
   DeviceDetail,
   Direction,
   MachineStatus,
-  VisionResult,
+  VisionStatus,
 } from "../../../types/equipment";
 
 export default function DeviceDetailScreen() {
   const { deviceId } = useLocalSearchParams<{ deviceId: string }>();
   const router = useRouter();
   const logs = useLogData();
+  const [showResolveButton, setShowResolveButton] = useState(false);
 
   const currentDeviceLog = useMemo(() => {
     return logs.find((l) => l.header?.device_id === deviceId);
+  }, [logs, deviceId]);
+
+  useEffect(() => {
+    if (deviceId) {
+      const activeAlert = getActiveAlertByDeviceId(deviceId);
+      if (activeAlert && activeAlert.acceptedBy) {
+        const isAcceptor = isCurrentUserAcceptor(
+          activeAlert.alertEvent.alertId,
+        );
+        setShowResolveButton(isAcceptor);
+      } else {
+        setShowResolveButton(false);
+      }
+    }
   }, [logs, deviceId]);
 
   const detail: DeviceDetail | null = useMemo(() => {
@@ -50,17 +69,18 @@ export default function DeviceDetailScreen() {
       vibrationX: body.sensor_data.vibration_x,
       vibrationY: body.sensor_data.vibration_y,
       illumination: body.sensor_data.illumination,
+      humidity: body.sensor_data.humidity || 0,
       timestamp: body.timestamp,
       statusInfos: body.status_info.map((info) => ({
         code: info.code,
         msg: info.msg,
         severity: info.severity,
         direction: info.direction as Direction,
-        partLocation: info.part_location as string, // PartLocation 타입 대신 string 사용
+        partLocation: info.part_location as string,
         isCaptureRequired: info.is_capture_required,
       })),
       visionResult: {
-        result: body.vision_result.result as VisionResult,
+        result: body.vision_result.result as VisionStatus,
         defectType: body.vision_result.defect_type,
         confidence: body.vision_result.confidence,
         inspectionArea: body.vision_result.inspection_area,
@@ -72,10 +92,12 @@ export default function DeviceDetailScreen() {
   const handleResolveError = async () => {
     if (!deviceId) return;
     try {
-      await resolveDeviceError(deviceId);
       await resolveAlertByDeviceId(deviceId);
+      await resolveDeviceError(deviceId);
+      setShowResolveButton(false);
       RNAlert.alert("알림", "오류 수정이 완료되었습니다.");
     } catch (error) {
+      console.error("[DeviceDetail] 오류 수정 처리 실패:", error);
       RNAlert.alert("오류", "처리에 실패했습니다.");
     }
   };
@@ -89,7 +111,6 @@ export default function DeviceDetailScreen() {
   }
 
   const statusColor = STATUS_COLOR[detail.machineStatus] || "#94A3B8";
-  const isError = detail.machineStatus === "ERROR";
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "right", "left"]}>
@@ -137,7 +158,11 @@ export default function DeviceDetailScreen() {
             label="진동 (X/Y)"
             value={`${detail.vibrationX.toFixed(2)} / ${detail.vibrationY.toFixed(2)}`}
           />
-          <InfoRow label="조도" value={`${detail.illumination} lux`} />
+          <InfoRow
+            label="조도"
+            value={`${detail.illumination.toFixed(3)} lux`}
+          />
+          <InfoRow label="습도" value={`${detail.humidity.toFixed(3)} %`} />
         </View>
 
         <View style={styles.infoCard}>
@@ -174,7 +199,7 @@ export default function DeviceDetailScreen() {
           ))}
         </View>
 
-        {isError && (
+        {showResolveButton && (
           <TouchableOpacity
             style={styles.resolveErrorButton}
             onPress={handleResolveError}

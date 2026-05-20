@@ -56,8 +56,8 @@ export interface RawLog {
 const DEVICE_COUNT = 25;
 const MAX_LOG_CAPACITY = 5000;
 const INITIAL_DATA_COUNT = 100;
-const ERROR_RATE = 0.03; // 에러 발생 확률
-const RECOVERY_RATE = 0.05; // 자연 복구 확률
+const ERROR_RATE = 0.03;
+const RECOVERY_RATE = 0.05;
 
 let globalSequence = 0;
 
@@ -72,6 +72,16 @@ const deviceCurrentState = new Map<
 >();
 
 export let MOCK_RAW_LOGS: RawLog[] = [];
+
+// [추가된 함수] 장비 ID 목록 가져오기
+export const getDeviceIdsFromLogs = (): string[] => {
+  return DEVICE_IDS;
+};
+
+// [추가된 함수] 특정 장비의 최신 로그 가져오기
+export const getLatestLogByDevice = (deviceId: string): RawLog | undefined => {
+  return MOCK_RAW_LOGS.find((log) => log.header.device_id === deviceId);
+};
 
 const createLogEntry = (
   deviceId: string,
@@ -90,7 +100,6 @@ const createLogEntry = (
     image_url: null,
   };
 
-  // 1. 에러 발생 로직
   if (state.status === "RUN" && Math.random() < ERROR_RATE) {
     state.status = "ERROR";
     const randomError =
@@ -106,7 +115,6 @@ const createLogEntry = (
       },
     ];
 
-    // [보완] useAlertSystem이 놓칠 경우를 대비해 여기서도 직접 트리거 (이중 안전 장치)
     const alertEvent: AlertEvent = {
       alertId: `alert_${Date.now()}_${deviceId}_${sequence}`,
       deviceId: deviceId,
@@ -116,14 +124,11 @@ const createLogEntry = (
       timestamp: new Date().toISOString(),
     };
     handleAlertEvent(alertEvent, MOCK_WORKERS as any);
-  }
-  // 2. 자연 복구 로직
-  else if (state.status === "ERROR" && Math.random() < RECOVERY_RATE) {
+  } else if (state.status === "ERROR" && Math.random() < RECOVERY_RATE) {
     state.status = "RUN";
     state.info = [];
   }
 
-  // 기본 상태 정보 설정
   if (state.info.length === 0) {
     state.info = [
       {

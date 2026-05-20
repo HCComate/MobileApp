@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────
 //  services/alertManager.ts
-//  알람 에스컬레이션 생명주기 관리 + 이력 관리 추가
+//  알람 에스컬레이션 생명주기 관리 + 이력 관리 + 서버 통신 통합
 // ─────────────────────────────────────────────
 
 import * as Notifications from "expo-notifications";
@@ -14,6 +14,7 @@ import {
   EscalationStep,
 } from "../types/alert";
 import { buildEscalationPolicy, getNextStep } from "./alertPriority";
+import apiClient from "./apiClient"; // apiClient 임포트
 
 // ── 알림 액션 카테고리 등록 ───
 export async function registerAlertActions() {
@@ -81,6 +82,9 @@ export async function handleAlertEvent(
 //  단계별 알람 전송
 // ════════════════════════════════════════════════
 async function sendStepNotification(event: AlertEvent, step: EscalationStep) {
+  // 푸시 알림 및 팝업은 대상자에게만
+  if (step.targetUser.userId !== currentUserId) return;
+
   // 팝업 표시
   alertModalStore.show({
     alertId: event.alertId,
@@ -90,9 +94,6 @@ async function sendStepNotification(event: AlertEvent, step: EscalationStep) {
     severity: event.severity,
     timestamp: event.timestamp,
   });
-
-  // 푸시 알림은 대상자에게만
-  if (step.targetUser.userId !== currentUserId) return;
 
   await Notifications.scheduleNotificationAsync({
     content: {
@@ -165,12 +166,41 @@ export async function respondToAlert(
 
   clearEscalationTimer(alertId);
   active.response = response;
-  if (response === "ACCEPTED") {
-    active.respondedBy = currentUserId;
-    activeAlerts.set(alertId, active);
-  } else {
-    activeAlerts.set(alertId, active);
-    await escalateAlert(alertId, "REJECTED", allUsers);
+
+  try {
+    if (response === "ACCEPTED") {
+      active.respondedBy = currentUserId;
+      active.acceptedBy = currentUserId; // 알람을 수락한 사용자 ID 저장
+      activeAlerts.set(alertId, active);
+
+      // 서버에 수락 응답 전송
+      await apiClient.post(`/api/alerts/${alertId}/respond`, {
+        response: "ACCEPTED",
+        userId: currentUserId,
+      });
+      console.log(`[API Success] 알림 ${alertId} 수락 응답 전송 완료`);
+    } else {
+      activeAlerts.set(alertId, active);
+      await escalateAlert(alertId, "REJECTED", allUsers);
+
+      // 서버에 거절 응답 전송
+      await apiClient.post(`/api/alerts/${alertId}/respond`, {
+        response: "REJECTED",
+        userId: currentUserId,
+      });
+      console.log(`[API Success] 알림 ${alertId} 거절 응답 전송 완료`);
+    }
+  } catch (error) {
+    console.error(`[API Error] 알림 ${alertId} 응답 전송 실패:`, error);
+    // 서버 통신 실패 시에도 앱 내부 로직은 유지
+    if (response === "ACCEPTED") {
+      active.respondedBy = currentUserId;
+      active.acceptedBy = currentUserId;
+      activeAlerts.set(alertId, active);
+    } else {
+      activeAlerts.set(alertId, active);
+      await escalateAlert(alertId, "REJECTED", allUsers);
+    }
   }
 }
 
@@ -190,9 +220,37 @@ export function resolveAlert(alertId: string) {
   activeAlerts.delete(alertId);
 }
 
-export function resolveAlertByDeviceId(deviceId: string) {
+export function getActiveAlertByDeviceId(
+  deviceId: string,
+): ActiveAlert | undefined {
+  return Array.from(activeAlerts.values()).find(
+    (a) => a.alertEvent.deviceId === deviceId,
+  );
+}
+
+export function isCurrentUserAcceptor(alertId: string): boolean {
+  const active = activeAlerts.get(alertId);
+  return active?.acceptedBy === currentUserId;
+}
+
+export async function resolveAlertByDeviceId(deviceId: string) {
   const active = Array.from(activeAlerts.values()).find(
     (a) => a.alertEvent.deviceId === deviceId,
   );
-  if (active) resolveAlert(active.alertEvent.alertId);
+  if (active) {
+    try {
+      await apiClient.post(`/api/devices/${deviceId}/resolve`);
+      console.log(
+        `[API Success] 장비 ${deviceId} 오류 수정 완료 신호 전송 완료`,
+      );
+      resolveAlert(active.alertEvent.alertId);
+    } catch (error) {
+      console.error(
+        `[API Error] 장비 ${deviceId} 오류 수정 완료 신호 전송 실패:`,
+        error,
+      );
+      // 서버 통신 실패 시에도 앱 내부 로직은 진행
+      resolveAlert(active.alertEvent.alertId);
+    }
+  }
 }
