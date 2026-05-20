@@ -6,7 +6,7 @@ console.log("[logListener] module loaded");
  * 로그 리스너 서비스
  *
  * 현재 구조:
- * - Mock 데이터 환경: mock/logs.ts 내부에서 에러 발생 시 직접 handleAlertEvent를 호출합니다.
+ * - Mock 데이터 환경: mock/Logs.ts 내부에서 에러 발생 시 직접 handleAlertEvent를 호출합니다.
  * - 실제 서버 환경: 아래 startLogListener 내부의 주석된 WebSocket 로직을 통해 서버 이벤트를 수신합니다.
  */
 export function startLogListener() {
@@ -14,7 +14,7 @@ export function startLogListener() {
 
   console.log("[logListener] startLogListener called");
   console.log(
-    "[logListener] 현재 실시간 로그 기반 알람 대기 중 (mock/logs.ts 연동)",
+    "[logListener] 현재 실시간 로그 기반 알람 대기 중 (mock/Logs.ts 연동)",
   );
 
   // ─────────────────────────────────────────────────────────────────────────────

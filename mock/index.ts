@@ -4,7 +4,7 @@
 //
 //  기존 import 경로 변경 안내:
 //  - mock/devices  → mocks (generateMockSummaries 사용)
-//  - mock/logs     → mocks/rawLogs
+//  - mock/Logs     → mocks/rawLogs
 //  - mock/workers  → mocks/workers
 //  - mock/userData → mock/userData (변경 없음)
 //  - mock/notice   → mock/notice   (변경 없음)
@@ -16,3 +16,4 @@ export * from "./alertMocks";
 export * from "./deviceMocks";
 export * from "./Logs";
 export * from "./workers";
+

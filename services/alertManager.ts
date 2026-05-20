@@ -1,10 +1,6 @@
 // ─────────────────────────────────────────────
 //  services/alertManager.ts
-//  알람 에스컬레이션 생명주기 관리
-//
-//  SDK 54 변경사항:
-//  - content 안에 android: {} 중첩 객체 제거
-//  - Android 설정은 채널에서 처리
+//  알람 에스컬레이션 생명주기 관리 + 이력 관리 추가
 // ─────────────────────────────────────────────
 
 import * as Notifications from "expo-notifications";
@@ -19,7 +15,7 @@ import {
 } from "../types/alert";
 import { buildEscalationPolicy, getNextStep } from "./alertPriority";
 
-// ── 알림 액션 카테고리 등록 (수락/거절 버튼) ───
+// ── 알림 액션 카테고리 등록 ───
 export async function registerAlertActions() {
   await Notifications.setNotificationCategoryAsync("ALERT_ACTIONS", [
     {
@@ -37,12 +33,13 @@ export async function registerAlertActions() {
 }
 
 // ── 현재 로그인한 사용자 ID ────────────────────
-let currentUserId: string = "";
-export function setCurrentUserId(userId: string) {
+let currentUserId: string | undefined = "9999999"; // 기본값 관리자로 설정
+export function setCurrentUserId(userId: string | undefined) {
   currentUserId = userId;
 }
 
 const activeAlerts = new Map<string, ActiveAlert>();
+const alertHistory: ActiveAlert[] = []; // 알람 이력 저장용 배열
 const escalationTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const policyCache = new Map<string, EscalationPolicy>();
 
@@ -61,23 +58,30 @@ export async function handleAlertEvent(
   const firstStep = policy.steps[0];
   if (!firstStep) return;
 
-  activeAlerts.set(event.alertId, {
+  const newActiveAlert: ActiveAlert = {
     alertEvent: event,
     currentStepIndex: 0,
     createdAt: new Date().toISOString(),
-  });
+  };
 
+  // 1. 이력에 추가
+  alertHistory.unshift(newActiveAlert);
+  if (alertHistory.length > 1000) alertHistory.pop();
+
+  // 2. 팝업 및 에스컬레이션 처리
+  activeAlerts.set(event.alertId, newActiveAlert);
   await sendStepNotification(event, firstStep);
   startEscalationTimer(event.alertId, firstStep.timeoutSec, allUsers);
+  console.log(
+    `[AlertManager] 알람 활성화: ${event.deviceId} (${event.severity})`,
+  );
 }
 
 // ════════════════════════════════════════════════
-//  단계별 알람 전송 (수락/거절 버튼 포함)
+//  단계별 알람 전송
 // ════════════════════════════════════════════════
 async function sendStepNotification(event: AlertEvent, step: EscalationStep) {
-  // 푸시 알림은 대상자에게만
-  if (step.targetUser.userId !== currentUserId) return;
-  // 팝업은 항상 표시 (현재 앱 사용자에게)
+  // 팝업 표시
   alertModalStore.show({
     alertId: event.alertId,
     deviceId: event.deviceId,
@@ -87,19 +91,14 @@ async function sendStepNotification(event: AlertEvent, step: EscalationStep) {
     timestamp: event.timestamp,
   });
 
+  // 푸시 알림은 대상자에게만
+  if (step.targetUser.userId !== currentUserId) return;
+
   await Notifications.scheduleNotificationAsync({
     content: {
       title: `⚠️ 장비 오류 [${event.severity}]`,
       body: `${event.deviceId} - ${event.errorCode}: ${event.errorMsg}`,
-      data: {
-        alertId: event.alertId,
-        deviceId: event.deviceId,
-        errorCode: event.errorCode,
-        errorMsg: event.errorMsg,
-        severity: event.severity,
-        timestamp: event.timestamp,
-        screen: "DeviceDetail",
-      },
+      data: { ...event, screen: "DeviceDetail" },
       sound: "default",
     },
     trigger: {
@@ -108,16 +107,10 @@ async function sendStepNotification(event: AlertEvent, step: EscalationStep) {
       channelId: "visionmate-alert",
     },
   });
-
-  console.log(
-    `[AlertManager] Step ${step.stepIndex}`,
-    `→ ${step.targetUser.name} (${step.targetUser.role} / ${step.targetUser.workStatus})`,
-    `타임아웃: ${step.timeoutSec}초`,
-  );
 }
 
 // ════════════════════════════════════════════════
-//  에스컬레이션 타이머
+//  타이머 및 에스컬레이션 로직
 // ════════════════════════════════════════════════
 function startEscalationTimer(
   alertId: string,
@@ -127,9 +120,10 @@ function startEscalationTimer(
   clearEscalationTimer(alertId);
   escalationTimers.set(
     alertId,
-    setTimeout(async () => {
-      await escalateAlert(alertId, "TIMEOUT", allUsers);
-    }, timeoutSec * 1000),
+    setTimeout(
+      () => escalateAlert(alertId, "TIMEOUT", allUsers),
+      timeoutSec * 1000,
+    ),
   );
 }
 
@@ -141,9 +135,6 @@ function clearEscalationTimer(alertId: string) {
   }
 }
 
-// ════════════════════════════════════════════════
-//  에스컬레이션
-// ════════════════════════════════════════════════
 async function escalateAlert(
   alertId: string,
   reason: "TIMEOUT" | "REJECTED",
@@ -154,25 +145,16 @@ async function escalateAlert(
   if (!active || !policy) return;
 
   const nextStep = getNextStep(policy, active.currentStepIndex);
-  if (!nextStep) {
-    console.log(`[AlertManager] ${alertId} 에스컬레이션 완료`);
-    return;
-  }
+  if (!nextStep) return;
 
   active.currentStepIndex = nextStep.stepIndex;
   active.escalatedAt = new Date().toISOString();
   activeAlerts.set(alertId, active);
 
-  console.log(
-    `[AlertManager] ${alertId} ${reason} → Step ${nextStep.stepIndex} ${nextStep.targetUser.name}`,
-  );
   await sendStepNotification(active.alertEvent, nextStep);
   startEscalationTimer(alertId, nextStep.timeoutSec, allUsers);
 }
 
-// ════════════════════════════════════════════════
-//  사용자 응답 처리
-// ════════════════════════════════════════════════
 export async function respondToAlert(
   alertId: string,
   response: AlertResponse,
@@ -181,27 +163,36 @@ export async function respondToAlert(
   const active = activeAlerts.get(alertId);
   if (!active) return;
 
+  clearEscalationTimer(alertId);
+  active.response = response;
   if (response === "ACCEPTED") {
-    clearEscalationTimer(alertId);
-    active.response = "ACCEPTED";
     active.respondedBy = currentUserId;
     activeAlerts.set(alertId, active);
-    console.log(`[AlertManager] ${alertId} 수락됨 by ${currentUserId}`);
-    // TODO: 서버에 수락 응답 전송
-  } else if (response === "REJECTED") {
-    clearEscalationTimer(alertId);
-    active.response = "REJECTED";
+  } else {
     activeAlerts.set(alertId, active);
     await escalateAlert(alertId, "REJECTED", allUsers);
   }
 }
 
+// ════════════════════════════════════════════════
+//  이력 조회 및 해결 로직
+// ════════════════════════════════════════════════
 export function getActiveAlerts(): ActiveAlert[] {
   return Array.from(activeAlerts.values());
+}
+
+export function getAllAlertHistory(): ActiveAlert[] {
+  return alertHistory;
 }
 
 export function resolveAlert(alertId: string) {
   clearEscalationTimer(alertId);
   activeAlerts.delete(alertId);
-  policyCache.delete(alertId);
+}
+
+export function resolveAlertByDeviceId(deviceId: string) {
+  const active = Array.from(activeAlerts.values()).find(
+    (a) => a.alertEvent.deviceId === deviceId,
+  );
+  if (active) resolveAlert(active.alertEvent.alertId);
 }

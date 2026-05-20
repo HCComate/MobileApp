@@ -2,7 +2,7 @@
 //  mock/rawLogs.ts
 //  서버 Raw JSON 형식 통합 더미 데이터
 //
-//  원본 mock/logs.ts 대비 변경사항:
+//  원본 mock/Logs.ts 대비 변경사항:
 //  1. sensor_data에 humidity 필드 추가
 //  2. header에 assigned_worker_id 필드 추가
 //  3. 데이터 건수 동일 유지 (30건)

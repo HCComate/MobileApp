@@ -1,123 +1,99 @@
-// ─────────────────────────────────────────────
-//  hooks/useAlertSystem.ts
-//
-//  변경사항:
-//  1. registerAlertActions 호출 추가 (수락/거절 버튼 등록)
-//  2. 알림 액션 응답 처리 (ACCEPT → respondToAlert, REJECT → respondToAlert)
-// ─────────────────────────────────────────────
-
 import * as Notifications from "expo-notifications";
-import { useEffect, useRef, useState } from "react";
-import { AppState, AppStateStatus } from "react-native";
-import {
-  respondToAlert as _respondToAlert,
-  getActiveAlerts,
-  handleAlertEvent,
-  registerAlertActions,
-  setCurrentUserId,
-} from "../services/alertManager";
-import {
-  ActiveAlert,
-  AlertEvent,
-  AlertResponse,
-  AlertUser,
-} from "../types/alert";
+import { useEffect, useRef } from "react";
+import { Platform } from "react-native";
+import { MOCK_WORKERS } from "../mock/workers";
+import { handleAlertEvent } from "../services/alertManager";
+import { AlertEvent } from "../types/alert";
+import { useLogData } from "./updateData";
 
-interface UseAlertSystemOptions {
-  currentUserId: string;
-  allUsers: AlertUser[];
-}
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
 
-export function useAlertSystem({
-  currentUserId,
-  allUsers,
-}: UseAlertSystemOptions) {
-  const [activeAlerts, setActiveAlerts] = useState<ActiveAlert[]>([]);
-  const appState = useRef(AppState.currentState);
+export function useAlertSystem() {
+  const logs = useLogData();
+  const lastProcessedId = useRef<string | null>(null);
+  const initialLogCount = useRef<number>(-1);
 
-  // 현재 사용자 ID 설정
   useEffect(() => {
-    setCurrentUserId(currentUserId);
-  }, [currentUserId]);
-
-  // 알림 권한 요청 + 수락/거절 버튼 등록
-  useEffect(() => {
-    (async () => {
+    async function setupNotifications() {
       const { status } = await Notifications.requestPermissionsAsync();
-      if (status !== "granted") {
-        console.warn("[useAlertSystem] 알림 권한 없음");
-        return;
+      if (status !== "granted") return;
+
+      if (Platform.OS === "android") {
+        await Notifications.setNotificationChannelAsync("visionmate-alert", {
+          name: "장비 알람",
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: "#FF231F7C",
+          sound: "default",
+        });
       }
-      // 수락/거절 액션 버튼 등록
-      await registerAlertActions();
-    })();
+    }
+    setupNotifications();
   }, []);
 
-  // 알림 액션 응답 처리 (수락/거절 버튼 탭)
   useEffect(() => {
-    const sub = Notifications.addNotificationResponseReceivedListener(
-      async (response) => {
-        const { actionIdentifier, notification } = response;
-        const data = notification.request.content.data as {
-          alertId?: string;
-          deviceId?: string;
-        };
+    if (!logs || logs.length === 0) return;
 
-        console.log("[useAlertSystem] 알림 액션:", actionIdentifier, data);
+    // 초기 실행 시점 설정
+    if (initialLogCount.current === -1) {
+      initialLogCount.current = logs.length;
+      const latest = logs[0];
+      if (latest) {
+        lastProcessedId.current = `${latest.header?.device_id}_${latest.body?.sequence}`;
+      }
+      console.log("[AlertSystem] 감시 시작: ", lastProcessedId.current);
+      return;
+    }
 
-        if (!data.alertId) return;
+    // 새로운 로그 필터링 (마지막 처리된 로그 ID와 비교)
+    const latest = logs[0];
+    const currentId = `${latest.header?.device_id}_${latest.body?.sequence}`;
 
-        if (actionIdentifier === "ACCEPT") {
-          await _respondToAlert(data.alertId, "ACCEPTED", allUsers);
-          setActiveAlerts(getActiveAlerts());
-          console.log("[useAlertSystem] 수락 처리 완료");
-        } else if (actionIdentifier === "REJECT") {
-          await _respondToAlert(data.alertId, "REJECTED", allUsers);
-          setActiveAlerts(getActiveAlerts());
-          console.log("[useAlertSystem] 거절 처리 완료");
-        } else {
-          // 버튼 없이 알림 탭 → 앱 열기만
-          console.log("[useAlertSystem] 알림 탭 (액션 없음)");
-          // TODO: router.push(`/equipment/${data.deviceId}`);
-        }
-      },
-    );
+    if (currentId !== lastProcessedId.current) {
+      // 새로운 로그가 들어왔을 때, 최근 5개 로그 중 처리 안 된 에러가 있는지 전수 조사
+      // (0.5초 사이에 여러 개가 들어올 수 있으므로)
+      const newLogs = [];
+      for (const log of logs) {
+        const id = `${log.header?.device_id}_${log.body?.sequence}`;
+        if (id === lastProcessedId.current) break;
+        newLogs.push(log);
+        if (newLogs.length > 10) break; // 너무 많은 과거 데이터 방지
+      }
 
-    return () => sub.remove();
-  }, [allUsers]);
+      if (newLogs.length > 0) {
+        [...newLogs].reverse().forEach((log) => {
+          if (log.body?.machine_status === "ERROR") {
+            const severity = (log.body?.status_info?.[0]?.severity ||
+              "HIGH") as any;
 
-  // 앱 포그라운드 복귀 시 알람 목록 갱신
-  useEffect(() => {
-    const sub = AppState.addEventListener(
-      "change",
-      (nextState: AppStateStatus) => {
-        if (
-          appState.current.match(/inactive|background/) &&
-          nextState === "active"
-        ) {
-          setActiveAlerts(getActiveAlerts());
-        }
-        appState.current = nextState;
-      },
-    );
-    return () => sub.remove();
-  }, []);
+            const alertEvent: AlertEvent = {
+              alertId: `alert_${Date.now()}_${log.header?.device_id}_${log.body?.sequence}`,
+              deviceId: log.header?.device_id || "UNKNOWN",
+              errorCode: log.body?.status_info?.[0]?.code || "ERR_UNKNOWN",
+              errorMsg:
+                log.body?.status_info?.[0]?.msg || "장비 에러가 발생했습니다.",
+              severity: severity,
+              timestamp: log.body?.timestamp || new Date().toISOString(),
+            };
 
-  // 오류 이벤트 수신 시 호출
-  // TODO: 통신 연동 시 Socket.IO 콜백에서 이 함수 호출
-  const triggerAlert = async (event: AlertEvent) => {
-    await handleAlertEvent(event, allUsers);
-    setActiveAlerts(getActiveAlerts());
-  };
+            console.log(
+              "[AlertSystem] 에러 알람 트리거: ",
+              log.header?.device_id,
+            );
+            handleAlertEvent(alertEvent, MOCK_WORKERS as any);
+          }
+        });
 
-  const respondToAlert = async (alertId: string, response: AlertResponse) => {
-    await _respondToAlert(alertId, response, allUsers);
-    setActiveAlerts(getActiveAlerts());
-  };
-
-  return {
-    activeAlerts,
-    triggerAlert,
-    respondToAlert,
-  };
+        lastProcessedId.current = currentId;
+      }
+    }
+  }, [logs]);
 }
