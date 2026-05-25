@@ -31,17 +31,48 @@ import {
   MachineStatus,
   VisionStatus,
 } from "../../../types/equipment";
+import apiClient from "../../../services/apiClient"; // api 대신 apiClient 사용 권장 (baseURL 설정 반영)
 
 export default function DeviceDetailScreen() {
   const { deviceId } = useLocalSearchParams<{ deviceId: string }>();
   const router = useRouter();
   const logs = useLogData();
+  
   const [showResolveButton, setShowResolveButton] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [serverDevice, setServerDevice] = useState<DeviceDetail | null>(null);
 
-  const currentDeviceLog = useMemo(() => {
-    return logs.find((l) => l.header?.device_id === deviceId);
-  }, [logs, deviceId]);
+  // 1. 서버 데이터 fetch 로직 (사용자 제안 디버깅 로그 포함)
+  useEffect(() => {
+    console.log("상세 페이지 진입 - 장비 ID:", deviceId);
 
+    const fetchDetail = async () => {
+      if (!deviceId) return;
+      
+      try {
+        console.log("데이터 요청 시작 (URL: /api/devices/" + deviceId + "/detail)...");
+        // 주의: 분석 결과 서버 경로는 /api/devices/{id}/detail 입니다.
+        const response = await apiClient.get(`/api/devices/${deviceId}/detail`);
+        
+        console.log("데이터 수신 성공 (Raw):", response.data);
+        
+        // MobileServer는 ApiResponse 래퍼를 사용하므로 response.data.data를 확인해야 함
+        const actualData = response.data.success ? response.data.data : response.data;
+        console.log("실제 데이터 추출:", actualData);
+        
+        setServerDevice(actualData);
+      } catch (error: any) {
+        console.error("데이터 요청 실패:", error);
+        console.error("에러 상세:", error.response?.data || error.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDetail();
+  }, [deviceId]);
+
+  // 2. 알림 해결 버튼 권한 체크
   useEffect(() => {
     if (deviceId) {
       const activeAlert = getActiveAlertByDeviceId(deviceId);
@@ -56,8 +87,13 @@ export default function DeviceDetailScreen() {
     }
   }, [logs, deviceId]);
 
+  // 3. 렌더링용 데이터 결정 (서버 데이터 우선, 없으면 로그 데이터에서 매핑)
   const detail: DeviceDetail | null = useMemo(() => {
+    if (serverDevice) return serverDevice;
+
+    const currentDeviceLog = logs.find((l) => l.header?.device_id === deviceId);
     if (!currentDeviceLog) return null;
+
     const body = currentDeviceLog.body;
     return {
       deviceId: deviceId as string,
@@ -87,7 +123,7 @@ export default function DeviceDetailScreen() {
         imageUrl: body.vision_result.image_url,
       },
     };
-  }, [currentDeviceLog, deviceId]);
+  }, [serverDevice, logs, deviceId]);
 
   const handleResolveError = async () => {
     if (!deviceId) return;
@@ -102,10 +138,24 @@ export default function DeviceDetailScreen() {
     }
   };
 
-  if (!detail) {
+  // 로딩 상태 표시
+  if (isLoading && !detail) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#3B82F6" />
+        <Text style={{ marginTop: 10, color: "#64748B" }}>장비 데이터를 불러오는 중...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  // 데이터 없음 표시
+  if (!detail) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <Text style={{ color: "#64748B" }}>장비 정보를 찾을 수 없습니다.</Text>
+        <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 20 }}>
+          <Text style={{ color: "#3B82F6" }}>뒤로 가기</Text>
+        </TouchableOpacity>
       </SafeAreaView>
     );
   }
@@ -162,7 +212,7 @@ export default function DeviceDetailScreen() {
             label="조도"
             value={`${detail.illumination.toFixed(3)} lux`}
           />
-          <InfoRow label="습도" value={`${detail.humidity.toFixed(3)} %`} />
+          <InfoRow label="습도" value={`${(detail.humidity ?? 0).toFixed(3)} %`} />
         </View>
 
         <View style={styles.infoCard}>
