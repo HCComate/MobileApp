@@ -1,7 +1,6 @@
 import PageHeader from "@/components/PageHeader";
 import { Colors } from "@/constants/Colors";
-import { Fonts } from "@/constants/Fonts";
-import { InspectionStatsData } from "@/mock/inspectionStatsMock";
+import apiClient from "@/services/apiClient";
 import { Stack } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -12,256 +11,272 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { BarChart, PieChart } from "react-native-gifted-charts";
+import { BarChart, LineChart, PieChart } from "react-native-gifted-charts";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { fetchInspectionStats } from "../../../services/statisticsApi";
+
+interface MonthlyStatsResponse {
+  target_month: string;
+  status_distribution: { RUN: number; ERROR: number; IDLE: number };
+  error_code_distribution: {
+    code: string;
+    count: number;
+    percentage: number;
+  }[];
+  sensor_trend_by_week: {
+    week: string;
+    temperature: number;
+    humidity: number;
+    vibration_x: number;
+  }[];
+  error_accumulation_by_device: { device_id: string; total_error: number }[];
+  error_rate_by_part: { part_location: string; percentage: number }[];
+}
 
 export default function MonthlyStatisticsScreen() {
   const [loading, setLoading] = useState<boolean>(true);
-  const [inspectionData, setInspectionData] =
-    useState<InspectionStatsData | null>(null);
+  const [data, setData] = useState<MonthlyStatsResponse | null>(null);
 
-  const [expandedSections, setExpandedSections] = useState<
-    Record<string, boolean>
-  >({
-    SUMMARY: true,
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({
+    STATUS: true,
+    CODES: false,
+    SENSOR: true,
     DEVICE: false,
-    ANALYSIS: false,
+    PART: false,
   });
 
-  useEffect(() => {
-    const loadData = async () => {
-      const data = await fetchInspectionStats("monthly");
-      setInspectionData(data);
-      setLoading(false);
-    };
+  const fetchStatistics = () => {
+    const today = new Date();
+    const formattedMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
 
-    loadData();
-  }, []);
-
-  const toggleSection = (sectionId: string) => {
-    setExpandedSections((prev) => ({
-      ...prev,
-      [sectionId]: !prev[sectionId],
-    }));
+    apiClient
+      .get(`/api/stats/monthly?month=${formattedMonth}`)
+      .then((res) => setData(res.data))
+      .catch((e) => console.error(e))
+      .finally(() => setLoading(false));
   };
 
-  if (loading || !inspectionData) {
+  // 타이머를 이용한 매달 1일 정오 자동 새로고침 스케줄러
+  useEffect(() => {
+    // 최초 1회(앱이 켜질 때) 데이터 호출
+    fetchStatistics();
+
+    let timeoutId: any;
+    let intervalId: any;
+
+    // 다음 달 1일 정오(12:00)까지 남은 밀리초(ms) 계산 함수
+    const getMsUntilNextMonthFirstNoon = () => {
+      const now = new Date();
+      const nextMonthFirstNoon = new Date(
+        now.getFullYear(),
+        now.getMonth() + 1,
+        1,
+        12,
+        0,
+        0,
+        0,
+      );
+
+      return nextMonthFirstNoon.getTime() - now.getTime();
+    };
+
+    // 1개월(30일~31일) 단위 주기를 동적으로 제어하기 위한 주기적 스케줄러 실행 함수
+    const startMonthlyInterval = () => {
+      intervalId = setInterval(
+        () => {
+          fetchStatistics();
+        },
+        30 * 24 * 60 * 60 * 1000,
+      ); // 대략적인 기본 주기 배치 설정 후 정시성 유지를 위함
+    };
+
+    // 스케줄러 설정 구현
+    const setupMonthlyScheduler = () => {
+      const msUntilNextMonthFirstNoon = getMsUntilNextMonthFirstNoon();
+
+      // 다가오는 다음 달 1일 정오 정각에 맞춰 갱신 요청
+      timeoutId = setTimeout(() => {
+        fetchStatistics();
+        startMonthlyInterval(); // 이후 한 달 주기로 작동
+      }, msUntilNextMonthFirstNoon);
+    };
+
+    setupMonthlyScheduler();
+
+    // 컴포넌트 언마운트 시 등록된 스케줄러 삭제 (메모리 누수 차단)
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, []);
+
+  const toggleSection = (section: string) => {
+    setExpanded((p) => ({ ...p, [section]: !p[section] }));
+  };
+
+  if (loading || !data)
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={Colors.light.brandDark} />
-        <Text style={styles.loadingText}>월간 검사 통계 가동 중...</Text>
       </View>
     );
-  }
 
-  const total = inspectionData.totalToday;
-  const okRate =
-    total > 0
-      ? ((inspectionData.okCountToday / total) * 100).toFixed(2)
-      : "0.00";
-  const ngRate =
-    total > 0
-      ? ((inspectionData.ngCountToday / total) * 100).toFixed(2)
-      : "0.00";
-
-  const visionPieChartData = [
-    {
-      value: inspectionData.okCountToday,
-      color: "#2ED573",
-      text: `${parseFloat(okRate).toFixed(1)}%`,
-      textStyle: { fontWeight: "bold" },
-    },
-    {
-      value: inspectionData.ngCountToday,
-      color: "#FF4757",
-      text: `${parseFloat(ngRate).toFixed(1)}%`,
-      focused: true,
-      textStyle: { fontWeight: "bold" },
-    },
+  // 월간 설비 상태 비율 데이터 변환
+  const statusPieData = [
+    { value: data.status_distribution.RUN, color: "#2ED573", text: "RUN" },
+    { value: data.status_distribution.ERROR, color: "#FF4757", text: "ERR" },
+    { value: data.status_distribution.IDLE, color: "#FFA500", text: "IDLE" },
   ];
 
-  const deviceBarChartData = Object.entries(inspectionData.ngCountByDevice).map(
-    ([deviceId, count]) => ({
-      value: count,
-      label: deviceId.replace("RASP_PI_", "#"),
-      frontColor: Colors.light.brandDark,
+  // 핵심 에러 코드 분포 데이터 변환
+  const errorCodePieData = data.error_code_distribution.map(
+    (item: { code: string; percentage: number }) => ({
+      value: item.percentage,
+      text: item.code,
+    }),
+  );
+
+  // 월간 평균 센서 변화 데이터 변환
+  const sensorTempLine = data.sensor_trend_by_week.map(
+    (item: { week: string; temperature: number }) => ({
+      value: item.temperature,
+      label: item.week,
+    }),
+  );
+
+  const sensorHumidLine = data.sensor_trend_by_week.map(
+    (item: { humidity: number }) => ({
+      value: item.humidity,
+    }),
+  );
+
+  // 장비별 에러 누적 데이터 변환
+  const deviceBarData = data.error_accumulation_by_device.map(
+    (item: { device_id: string; total_error: number }) => ({
+      value: item.total_error,
+      label: item.device_id.replace("RASP_PI_", "#"),
+    }),
+  );
+
+  // 부위별 에러 발생률 데이터 변환
+  const partPieData = data.error_rate_by_part.map(
+    (item: { part_location: string; percentage: number }) => ({
+      value: item.percentage,
+      text: item.part_location,
     }),
   );
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "right", "left"]}>
       <Stack.Screen options={{ headerShown: false }} />
-      <PageHeader title="월간 검사 통계" showBack={true} />
+      <PageHeader title={`월간 통계 (${data.target_month})`} showBack={true} />
 
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
       >
-        <View style={styles.summaryGrid}>
-          <View
-            style={[
-              styles.summaryCard,
-              { borderLeftColor: Colors.light.brandDark },
-            ]}
-          >
-            <Text style={styles.cardLabel}>월간 총 검사수</Text>
-            <Text style={styles.cardValue}>
-              {inspectionData.totalToday.toLocaleString()}
-            </Text>
-          </View>
-          <View style={[styles.summaryCard, { borderLeftColor: "#2ED573" }]}>
-            <Text style={styles.cardLabel}>정상(OK)</Text>
-            <Text style={[styles.cardValue, { color: "#2ED573" }]}>
-              {inspectionData.okCountToday.toLocaleString()}
-            </Text>
-          </View>
-          <View style={[styles.summaryCard, { borderLeftColor: "#FF4757" }]}>
-            <Text style={styles.cardLabel}>불량(NG)</Text>
-            <Text style={[styles.cardValue, { color: "#FF4757" }]}>
-              {inspectionData.ngCountToday.toLocaleString()}
-            </Text>
-          </View>
-        </View>
-
+        {/* 월간 설비 상태 비율 */}
         <View style={styles.section}>
           <TouchableOpacity
             style={styles.sectionHeader}
-            onPress={() => toggleSection("SUMMARY")}
-            activeOpacity={0.7}
+            onPress={() => toggleSection("STATUS")}
           >
-            <Text style={styles.sectionTitle}>월간 종합 판정 비율</Text>
-            <Text style={styles.arrowIcon}>
-              {expandedSections.SUMMARY ? "▲" : "▼"}
-            </Text>
+            <Text style={styles.sectionTitle}>월간 설비 상태 분포 비율</Text>
+            <Text style={styles.arrow}>{expanded.STATUS ? "▲" : "▼"}</Text>
           </TouchableOpacity>
-
-          {expandedSections.SUMMARY && (
+          {expanded.STATUS && (
             <View style={styles.chartHolder}>
-              <PieChart
-                data={visionPieChartData}
-                donut
-                showText
-                textColor="#FFFFFF"
-                radius={95}
-                innerRadius={60}
-                textSize={12}
-                labelsPosition="onBorder"
-                focusOnPress
-              />
-              <View style={styles.legendContainer}>
-                <View style={styles.legendItem}>
-                  <View
-                    style={[styles.legendDot, { backgroundColor: "#2ED573" }]}
-                  />
-                  <Text style={styles.legendText}>
-                    OK ({inspectionData.okCountToday.toLocaleString()}건)
-                  </Text>
-                </View>
-                <View style={styles.legendItem}>
-                  <View
-                    style={[styles.legendDot, { backgroundColor: "#FF4757" }]}
-                  />
-                  <Text style={styles.legendText}>
-                    NG ({inspectionData.ngCountToday.toLocaleString()}건)
-                  </Text>
-                </View>
-              </View>
+              <PieChart data={statusPieData} donut radius={80} />
             </View>
           )}
         </View>
 
+        {/* 핵심 에러 코드 분포 */}
+        <View style={styles.section}>
+          <TouchableOpacity
+            style={styles.sectionHeader}
+            onPress={() => toggleSection("CODES")}
+          >
+            <Text style={styles.sectionTitle}>
+              핵심 에러 코드별 점유율 분포
+            </Text>
+            <Text style={styles.arrow}>{expanded.CODES ? "▲" : "▼"}</Text>
+          </TouchableOpacity>
+          {expanded.CODES && (
+            <View style={styles.chartHolder}>
+              <PieChart
+                data={errorCodePieData}
+                radius={80}
+                showText
+                textColor="#FFF"
+                textSize={10}
+              />
+            </View>
+          )}
+        </View>
+
+        {/* 월간 평균 센서 변화 */}
+        <View style={styles.section}>
+          <TouchableOpacity
+            style={styles.sectionHeader}
+            onPress={() => toggleSection("SENSOR")}
+          >
+            <Text style={styles.sectionTitle}>
+              주차별 평균 환경 센서 변화 추이
+            </Text>
+            <Text style={styles.arrow}>{expanded.SENSOR ? "▲" : "▼"}</Text>
+          </TouchableOpacity>
+          {expanded.SENSOR && (
+            <View style={styles.chartHolder}>
+              <LineChart
+                data={sensorTempLine}
+                data2={sensorHumidLine}
+                color1="#FF4757"
+                color2="#1E3A8A"
+                thickness={3}
+              />
+            </View>
+          )}
+        </View>
+
+        {/* 장비별 에러 누적 */}
         <View style={styles.section}>
           <TouchableOpacity
             style={styles.sectionHeader}
             onPress={() => toggleSection("DEVICE")}
-            activeOpacity={0.7}
           >
-            <Text style={styles.sectionTitle}>
-              설비별 월간 불량 누적 리포트
-            </Text>
-            <Text style={styles.arrowIcon}>
-              {expandedSections.DEVICE ? "▲" : "▼"}
-            </Text>
+            <Text style={styles.sectionTitle}>장비별 에러 누적 수치 순위</Text>
+            <Text style={styles.arrow}>{expanded.DEVICE ? "▲" : "▼"}</Text>
           </TouchableOpacity>
-
-          {expandedSections.DEVICE && (
-            <View style={styles.barChartHolder}>
+          {expanded.DEVICE && (
+            <View style={styles.chartHolder}>
               <BarChart
-                data={deviceBarChartData}
-                barWidth={18}
-                spacing={14}
-                initialSpacing={12}
-                endSpacing={12}
-                noOfSections={4}
-                barBorderRadius={2}
-                yAxisThickness={1}
-                xAxisThickness={1}
-                yAxisColor="#E1E4E8"
-                xAxisColor="#E1E4E8"
-                xAxisLabelTextStyle={styles.chartLabelText}
-                yAxisTextStyle={styles.chartLabelText}
-                isAnimated
+                data={deviceBarData}
+                barWidth={22}
+                frontColor={Colors.light.brandDark}
               />
             </View>
           )}
         </View>
 
+        {/* 부위별 에러 발생률 */}
         <View style={styles.section}>
           <TouchableOpacity
             style={styles.sectionHeader}
-            onPress={() => toggleSection("ANALYSIS")}
-            activeOpacity={0.7}
+            onPress={() => toggleSection("PART")}
           >
-            <Text style={styles.sectionTitle}>월간 종합 가동 분석 지표</Text>
-            <Text style={styles.arrowIcon}>
-              {expandedSections.ANALYSIS ? "▲" : "▼"}
+            <Text style={styles.sectionTitle}>
+              부위 정보 기반 에러 발생 빈도 비중
             </Text>
+            <Text style={styles.arrow}>{expanded.PART ? "▲" : "▼"}</Text>
           </TouchableOpacity>
-
-          {expandedSections.ANALYSIS && (
-            <View style={styles.infoReportCard}>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>월간 누적 검사수</Text>
-                <Text style={styles.infoValue}>
-                  {inspectionData.totalToday.toLocaleString()} 개
-                </Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>정상 판정수</Text>
-                <Text style={[styles.infoValue, { color: "#2ED573" }]}>
-                  {inspectionData.okCountToday.toLocaleString()} 개
-                </Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>불량 판정수</Text>
-                <Text style={[styles.infoValue, { color: "#FF4757" }]}>
-                  {inspectionData.ngCountToday.toLocaleString()} 개
-                </Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>월간 총 가동 로그</Text>
-                <Text style={styles.infoValue}>
-                  {inspectionData.last24hCount.toLocaleString()} 개
-                </Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>월간 평균 불량률</Text>
-                <Text style={[styles.infoValue, { color: "#FF4757" }]}>
-                  {ngRate}%
-                </Text>
-              </View>
-              <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
-                <Text style={styles.infoLabel}>월간 목표 수율 달성도</Text>
-                <Text
-                  style={[
-                    styles.infoValue,
-                    { color: Colors.light.brandDark, fontWeight: "700" },
-                  ]}
-                >
-                  {okRate}% 달성
-                </Text>
-              </View>
+          {expanded.PART && (
+            <View style={styles.chartHolder}>
+              <PieChart
+                data={partPieData}
+                radius={80}
+                showText
+                textColor="#FFF"
+              />
             </View>
           )}
         </View>
@@ -273,105 +288,21 @@ export default function MonthlyStatisticsScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: Colors.light.background },
   container: { flex: 1 },
-  content: { padding: 16, paddingTop: 12, paddingBottom: 40 },
+  content: { padding: 16 },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  loadingText: {
-    marginTop: 15,
-    fontSize: 14,
-    color: "#747D8C",
-    fontFamily: Fonts.sans,
-  },
-  summaryGrid: { flexDirection: "row", gap: 8, marginBottom: 16 },
-  summaryCard: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-    paddingVertical: 14,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    borderLeftWidth: 4,
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 3,
-  },
-  cardLabel: {
-    fontSize: 11,
-    color: "#747D8C",
-    marginBottom: 4,
-    fontFamily: Fonts.sans,
-  },
-  cardValue: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#2F3542",
-    fontFamily: Fonts.sans,
-  },
   section: {
     backgroundColor: "#FFFFFF",
     borderRadius: 14,
     padding: 16,
-    marginBottom: 16,
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
+    marginBottom: 12,
+    elevation: 2,
   },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#2F3542",
-    fontFamily: Fonts.sans,
-  },
-  arrowIcon: { fontSize: 12, color: "#A4B0BE", fontWeight: "600" },
-  chartHolder: {
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 20,
-    marginBottom: 10,
-  },
-  barChartHolder: { marginTop: 20, paddingBottom: 5 },
-  legendContainer: { flexDirection: "row", gap: 20, marginTop: 20 },
-  legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
-  legendDot: { width: 10, height: 10, borderRadius: 5 },
-  legendText: { fontSize: 12, color: "#57606F", fontWeight: "500" },
-  chartLabelText: {
-    color: "#57606F",
-    fontSize: 9,
-    fontWeight: "600",
-    fontFamily: Fonts.sans,
-  },
-  infoReportCard: {
-    backgroundColor: "#F8F9FA",
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    marginTop: 15,
-  },
-  infoRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#E1E4E8",
-  },
-  infoLabel: {
-    fontSize: 13,
-    color: "#4A4A6A",
-    fontWeight: "500",
-    fontFamily: Fonts.sans,
-  },
-  infoValue: {
-    fontSize: 14,
-    color: "#1C1C1E",
-    fontWeight: "600",
-    fontFamily: Fonts.sans,
-  },
+  sectionTitle: { fontSize: 13, fontWeight: "700", color: "#2F3542" },
+  arrow: { fontSize: 12, color: "#A4B0BE" },
+  chartHolder: { alignItems: "center", marginTop: 15 },
 });
