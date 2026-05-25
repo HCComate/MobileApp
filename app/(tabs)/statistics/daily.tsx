@@ -1,295 +1,150 @@
 import PageHeader from "@/components/PageHeader";
-import { Colors } from "@/constants/Colors";
-import { Fonts } from "@/constants/Fonts";
-import { InspectionStatsData } from "@/mock/inspectionStatsMock";
+import apiClient from "@/services/apiClient";
 import { Stack } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Dimensions,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
-import { BarChart, PieChart } from "react-native-gifted-charts";
+import { BarChart, PieChart } from "react-native-gifted-charts"; // 차트 라이브러리
 import { SafeAreaView } from "react-native-safe-area-context";
-import { fetchInspectionStats } from "../../../services/statisticsApi";
+
+const { width } = Dimensions.get("window");
+
+interface StatisticsResponse {
+  totalToday: number;
+  okCountToday: number;
+  ngCountToday: number;
+  last24hCount: number;
+  ngCountByDevice: { [key: string]: number };
+  countBySeverity: { [key: string]: number };
+}
 
 export default function DailyStatisticsScreen() {
-  const [loading, setLoading] = useState<boolean>(true);
-  const [inspectionData, setInspectionData] =
-    useState<InspectionStatsData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [data, setData] = useState<StatisticsResponse | null>(null);
 
-  const [expandedSections, setExpandedSections] = useState<
-    Record<string, boolean>
-  >({
-    SUMMARY: true,
-    DEVICE: false,
-    ANALYSIS: false,
-  });
-
-  useEffect(() => {
-    let intervalTimer: any = null;
-    let timeoutTimer: any = null;
-
-    const loadData = async () => {
-      const data = await fetchInspectionStats("daily");
-      setInspectionData(data);
+  const fetchStatistics = async () => {
+    try {
+      const response = await apiClient.get("/api/statistics"); // 실제 서버 API
+      setData(response.data.data);
+    } catch (error) {
+      console.error("Fetch error:", error);
+    } finally {
       setLoading(false);
-    };
-
-    loadData();
-
-    const now = new Date();
-    const nextHour = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-      now.getHours() + 1,
-      0,
-      0,
-      0,
-    );
-    const msToNextHour = nextHour.getTime() - now.getTime();
-
-    timeoutTimer = setTimeout(() => {
-      loadData();
-
-      intervalTimer = setInterval(() => {
-        loadData();
-      }, 60000 * 60);
-    }, msToNextHour);
-
-    return () => {
-      if (timeoutTimer) clearTimeout(timeoutTimer);
-      if (intervalTimer) clearInterval(intervalTimer);
-    };
-  }, []);
-
-  const toggleSection = (sectionId: string) => {
-    setExpandedSections((prev) => ({
-      ...prev,
-      [sectionId]: !prev[sectionId],
-    }));
+      setRefreshing(false);
+    }
   };
 
-  if (loading || !inspectionData) {
+  useEffect(() => {
+    fetchStatistics();
+  }, []);
+
+  if (loading)
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={Colors.light.brandDark} />
-        <Text style={styles.loadingText}>일일 검사 통계 가동 중...</Text>
+        <ActivityIndicator size="large" color="#1E3A8A" />
       </View>
     );
-  }
+  if (!data)
+    return (
+      <View style={styles.center}>
+        <Text>데이터를 불러올 수 없습니다.</Text>
+      </View>
+    );
 
-  const total = inspectionData.totalToday;
-  const okRate =
-    total > 0
-      ? ((inspectionData.okCountToday / total) * 100).toFixed(2)
-      : "0.00";
-  const ngRate =
-    total > 0
-      ? ((inspectionData.ngCountToday / total) * 100).toFixed(2)
-      : "0.00";
+  // --- 차트 데이터 변환 ---
+  const okRate = ((data.okCountToday / data.totalToday) * 100).toFixed(1);
+  const ngRate = ((data.ngCountToday / data.totalToday) * 100).toFixed(1);
 
-  const visionPieChartData = [
+  const pieData = [
+    { value: data.okCountToday, color: "#2ED573", text: `${okRate}%` },
     {
-      value: inspectionData.okCountToday,
-      color: "#2ED573",
-      text: `${parseFloat(okRate).toFixed(1)}%`,
-      textStyle: { fontWeight: "bold" },
-    },
-    {
-      value: inspectionData.ngCountToday,
+      value: data.ngCountToday,
       color: "#FF4757",
-      text: `${parseFloat(ngRate).toFixed(1)}%`,
+      text: `${ngRate}%`,
       focused: true,
-      textStyle: { fontWeight: "bold" },
     },
   ];
 
-  const deviceBarChartData = Object.entries(inspectionData.ngCountByDevice).map(
-    ([deviceId, count]) => ({
-      value: count,
-      label: deviceId.replace("RASP_PI_", "#"),
-      frontColor: Colors.light.brandDark,
-    }),
-  );
+  const barData = Object.entries(data.ngCountByDevice).map(([name, count]) => ({
+    value: count,
+    label: name.length > 5 ? name.substring(0, 5) : name,
+    frontColor: "#1E3A8A",
+  }));
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "right", "left"]}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
       <Stack.Screen options={{ headerShown: false }} />
-      <PageHeader title="일일 검사 통계" showBack={true} />
-
+      <PageHeader title="일간 통계" showBack={true} />
       <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              fetchStatistics();
+            }}
+          />
+        }
       >
-        <View style={styles.summaryGrid}>
-          <View
-            style={[
-              styles.summaryCard,
-              { borderLeftColor: Colors.light.brandDark },
-            ]}
-          >
-            <Text style={styles.cardLabel}>총 검사수</Text>
-            <Text style={styles.cardValue}>
-              {inspectionData.totalToday.toLocaleString()}
-            </Text>
-          </View>
-          <View style={[styles.summaryCard, { borderLeftColor: "#2ED573" }]}>
-            <Text style={styles.cardLabel}>정상(OK)</Text>
-            <Text style={[styles.cardValue, { color: "#2ED573" }]}>
-              {inspectionData.okCountToday.toLocaleString()}
-            </Text>
-          </View>
-          <View style={[styles.summaryCard, { borderLeftColor: "#FF4757" }]}>
-            <Text style={styles.cardLabel}>불량(NG)</Text>
-            <Text style={[styles.cardValue, { color: "#FF4757" }]}>
-              {inspectionData.ngCountToday.toLocaleString()}
-            </Text>
+        {/* 요약 카드 */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>검사 요약</Text>
+          <View style={styles.row}>
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>총 검사</Text>
+              <Text style={styles.statValue}>{data.totalToday}</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>정상(OK)</Text>
+              <Text style={[styles.statValue, { color: "#2ED573" }]}>
+                {data.okCountToday}
+              </Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>비정상(NG)</Text>
+              <Text style={[styles.statValue, { color: "#FF4757" }]}>
+                {data.ngCountToday}
+              </Text>
+            </View>
           </View>
         </View>
 
-        <View style={styles.section}>
-          <TouchableOpacity
-            style={styles.sectionHeader}
-            onPress={() => toggleSection("SUMMARY")}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.sectionTitle}>실시간 판정 비율 (수율)</Text>
-            <Text style={styles.arrowIcon}>
-              {expandedSections.SUMMARY ? "▲" : "▼"}
-            </Text>
-          </TouchableOpacity>
-
-          {expandedSections.SUMMARY && (
-            <View style={styles.chartHolder}>
-              <PieChart
-                data={visionPieChartData}
-                donut
-                showText
-                textColor="#FFFFFF"
-                radius={95}
-                innerRadius={60}
-                textSize={12}
-                labelsPosition="onBorder"
-                focusOnPress
-              />
-              <View style={styles.legendContainer}>
-                <View style={styles.legendItem}>
-                  <View
-                    style={[styles.legendDot, { backgroundColor: "#2ED573" }]}
-                  />
-                  <Text style={styles.legendText}>
-                    OK ({inspectionData.okCountToday}건)
-                  </Text>
-                </View>
-                <View style={styles.legendItem}>
-                  <View
-                    style={[styles.legendDot, { backgroundColor: "#FF4757" }]}
-                  />
-                  <Text style={styles.legendText}>
-                    NG ({inspectionData.ngCountToday}건)
-                  </Text>
-                </View>
-              </View>
-            </View>
-          )}
+        {/* 정상/비정상 비율 차트 */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>검사 결과 비율</Text>
+          <View style={styles.chartCenter}>
+            <PieChart
+              data={pieData}
+              donut
+              showText
+              textColor="#FFF"
+              radius={90}
+              innerRadius={60}
+              textSize={12}
+            />
+          </View>
         </View>
 
-        <View style={styles.section}>
-          <TouchableOpacity
-            style={styles.sectionHeader}
-            onPress={() => toggleSection("DEVICE")}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.sectionTitle}>설비별 불량(NG) 검출 리포트</Text>
-            <Text style={styles.arrowIcon}>
-              {expandedSections.DEVICE ? "▲" : "▼"}
-            </Text>
-          </TouchableOpacity>
-
-          {expandedSections.DEVICE && (
-            <View style={styles.barChartHolder}>
-              <BarChart
-                data={deviceBarChartData}
-                barWidth={18}
-                spacing={14}
-                initialSpacing={12}
-                endSpacing={12}
-                noOfSections={4}
-                barBorderRadius={2}
-                yAxisThickness={1}
-                xAxisThickness={1}
-                yAxisColor="#E1E4E8"
-                xAxisColor="#E1E4E8"
-                xAxisLabelTextStyle={styles.chartLabelText}
-                yAxisTextStyle={styles.chartLabelText}
-                isAnimated
-              />
-            </View>
-          )}
-        </View>
-
-        <View style={styles.section}>
-          <TouchableOpacity
-            style={styles.sectionHeader}
-            onPress={() => toggleSection("ANALYSIS")}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.sectionTitle}>당일 종합 생산 분석 지표</Text>
-            <Text style={styles.arrowIcon}>
-              {expandedSections.ANALYSIS ? "▲" : "▼"}
-            </Text>
-          </TouchableOpacity>
-
-          {expandedSections.ANALYSIS && (
-            <View style={styles.infoReportCard}>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>당일 누적 검사수</Text>
-                <Text style={styles.infoValue}>
-                  {inspectionData.totalToday.toLocaleString()} 개
-                </Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>정상 판정수</Text>
-                <Text style={[styles.infoValue, { color: "#2ED573" }]}>
-                  {inspectionData.okCountToday.toLocaleString()} 개
-                </Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>불량 판정수</Text>
-                <Text style={[styles.infoValue, { color: "#FF4757" }]}>
-                  {inspectionData.ngCountToday.toLocaleString()} 개
-                </Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>최근 24시간 가동 로그</Text>
-                <Text style={styles.infoValue}>
-                  {inspectionData.last24hCount.toLocaleString()} 개
-                </Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>종합 설비 불량률</Text>
-                <Text style={[styles.infoValue, { color: "#FF4757" }]}>
-                  {ngRate}%
-                </Text>
-              </View>
-              <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
-                <Text style={styles.infoLabel}>최종 공정 수율</Text>
-                <Text
-                  style={[
-                    styles.infoValue,
-                    { color: Colors.light.brandDark, fontWeight: "700" },
-                  ]}
-                >
-                  {okRate}% 달성
-                </Text>
-              </View>
-            </View>
-          )}
+        {/* 장비별 비정상 건수 차트 */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>장비별 비정상(NG) 건수</Text>
+          <BarChart
+            data={barData}
+            barWidth={22}
+            noOfSections={3}
+            barBorderRadius={4}
+            frontColor="#1E3A8A"
+            yAxisThickness={0}
+            xAxisThickness={0}
+          />
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -297,107 +152,28 @@ export default function DailyStatisticsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: Colors.light.background },
-  container: { flex: 1 },
-  content: { padding: 16, paddingTop: 12, paddingBottom: 40 },
+  container: { flex: 1, backgroundColor: "#F8F9FA" },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  loadingText: {
-    marginTop: 15,
-    fontSize: 14,
-    color: "#747D8C",
-    fontFamily: Fonts.sans,
+  card: {
+    backgroundColor: "#FFF",
+    margin: 15,
+    padding: 20,
+    borderRadius: 15,
+    elevation: 2,
   },
-  summaryGrid: { flexDirection: "row", gap: 8, marginBottom: 16 },
-  summaryCard: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-    paddingVertical: 14,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    borderLeftWidth: 4,
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 3,
-  },
-  cardLabel: {
-    fontSize: 11,
-    color: "#747D8C",
-    marginBottom: 4,
-    fontFamily: Fonts.sans,
-  },
-  cardValue: {
+  cardTitle: {
     fontSize: 16,
-    fontWeight: "700",
-    color: "#2F3542",
-    fontFamily: Fonts.sans,
+    fontWeight: "bold",
+    marginBottom: 15,
+    color: "#333",
   },
-  section: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 16,
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#2F3542",
-    fontFamily: Fonts.sans,
-  },
-  arrowIcon: { fontSize: 12, color: "#A4B0BE", fontWeight: "600" },
-  chartHolder: {
+  row: { flexDirection: "row", justifyContent: "space-between" },
+  statItem: { alignItems: "center", flex: 1 },
+  statLabel: { fontSize: 12, color: "#888", marginBottom: 5 },
+  statValue: { fontSize: 18, fontWeight: "bold", color: "#333" },
+  chartCenter: {
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 20,
-    marginBottom: 10,
-  },
-  barChartHolder: { marginTop: 20, paddingBottom: 5 },
-  legendContainer: { flexDirection: "row", gap: 20, marginTop: 20 },
-  legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
-  legendDot: { width: 10, height: 10, borderRadius: 5 },
-  legendText: { fontSize: 12, color: "#57606F", fontWeight: "500" },
-  chartLabelText: {
-    color: "#57606F",
-    fontSize: 9,
-    fontWeight: "600",
-    fontFamily: Fonts.sans,
-  },
-  infoReportCard: {
-    backgroundColor: "#F8F9FA",
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    marginTop: 15,
-  },
-  infoRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#E1E4E8",
-  },
-  infoLabel: {
-    fontSize: 13,
-    color: "#4A4A6A",
-    fontWeight: "500",
-    fontFamily: Fonts.sans,
-  },
-  infoValue: {
-    fontSize: 14,
-    color: "#1C1C1E",
-    fontWeight: "600",
-    fontFamily: Fonts.sans,
+    paddingVertical: 10,
   },
 });

@@ -1,3 +1,6 @@
+// app/login.tsx
+
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -12,76 +15,80 @@ import {
 } from "react-native";
 import { Colors } from "../constants/Colors";
 import {
-  CURRENT_SERVER_URL,
-  isServerMode,
   MOCK_USER_LIST,
   setCurrentLoginId,
+  updateServerSettings,
 } from "../mock/userData";
 
 export default function LoginScreen() {
   const router = useRouter();
   const [id, setId] = useState("");
   const [password, setPassword] = useState("");
+  const [serverIp, setServerIp] = useState("10.30.5.94");
+  const [serverPort, setServerPort] = useState("8080");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async () => {
     const trimmedId = id.trim();
     const trimmedPassword = password.trim();
+    const trimmedIp = serverIp.trim();
+    const trimmedPort = serverPort.trim();
 
     if (!trimmedId || !trimmedPassword) {
       Alert.alert("알림", "아이디와 비밀번호를 모두 입력해주세요.");
       return;
     }
 
-    // 서버 모드가 꺼져있을 때는 기존 로컬 목업 로직 작동
-    if (!isServerMode) {
-      console.log("[Login] 로컬 목업 데이터로 가짜 로그인 시도");
-      const matchedUser = MOCK_USER_LIST.find(
-        (user) => user.loginId === trimmedId,
-      );
-
-      if (matchedUser && matchedUser.password === trimmedPassword) {
-        setCurrentLoginId(trimmedId);
-        router.replace("/(tabs)");
-      } else {
-        Alert.alert("로그인 실패", "아이디 또는 비밀번호가 올바르지 않습니다.");
-      }
-      return; // 목업 로그인 완료 시 함수 종료
+    if (!trimmedIp || !trimmedPort) {
+      Alert.alert("알림", "서버 IP와 포트를 입력해주세요.");
+      return;
     }
 
-    // 마이페이지에서 서버 연결 성공 시 실제 Spring Boot 통신 작동
     setIsLoading(true);
     try {
-      const response = await axios.post(
-        `${CURRENT_SERVER_URL}/api/auth/login`,
-        {
-          userId: trimmedId,
-          password: trimmedPassword,
-        },
-      );
+      const baseUrl = `http://${trimmedIp}:${trimmedPort}`;
+      const response = await axios.post(`${baseUrl}/api/auth/login`, {
+        userId: trimmedId,
+        password: trimmedPassword,
+      });
 
-      // LoginResponse 스펙 매칭
-      const { token, userId, name } = response.data;
+      const loginData = response.data?.data ?? response.data;
+      const { token, userId, name } = loginData;
 
       if (token) {
+        await AsyncStorage.setItem("userToken", token);
+        updateServerSettings(trimmedIp, trimmedPort, true);
         setCurrentLoginId(userId);
-        Alert.alert("로그인 성공", `${name}님, 환영합니다! (서버 연동 모드)`);
+        Alert.alert("로그인 성공", `${name}님, 환영합니다!`);
         router.replace("/(tabs)");
       } else {
         Alert.alert("로그인 실패", "서버 응답 형식이 올바르지 않습니다.");
       }
     } catch (error: any) {
       console.error("[Login Error]:", error);
+
       if (error.response) {
-        Alert.alert(
-          "로그인 실패",
-          "서버에 등록되지 않은 아이디거나 비밀번호가 틀렸습니다.",
-        );
+        Alert.alert("로그인 실패", "아이디 또는 비밀번호가 올바르지 않습니다.");
       } else {
-        Alert.alert(
-          "네트워크 오류",
-          "서버 연결에 실패했습니다. 마이페이지의 IP 설정을 다시 확인해 주세요.",
+        console.log("[Login] 서버 연결 실패 → 목업 모드로 전환");
+        updateServerSettings(trimmedIp, trimmedPort, false);
+
+        const matchedUser = MOCK_USER_LIST.find(
+          (user) => user.loginId === trimmedId,
         );
+        if (matchedUser && matchedUser.password === trimmedPassword) {
+          setCurrentLoginId(trimmedId);
+          Alert.alert(
+            "목업 로그인",
+            `서버 연결 실패로 목업 모드로 로그인합니다.\n담당자: ${matchedUser.name}`,
+          );
+          router.replace("/(tabs)");
+        } else {
+          Alert.alert(
+            "로그인 실패",
+            "서버 연결에 실패했습니다.\n아이디 또는 비밀번호를 확인해주세요.",
+          );
+        }
       }
     } finally {
       setIsLoading(false);
@@ -100,6 +107,29 @@ export default function LoginScreen() {
       </View>
 
       <View style={styles.formContainer}>
+        <Text style={styles.sectionLabel}>서버 설정</Text>
+        <View style={styles.ipRow}>
+          <TextInput
+            style={[styles.input, { flex: 3, marginBottom: 0 }]}
+            placeholder="서버 IP (예: 10.30.5.94)"
+            value={serverIp}
+            onChangeText={setServerIp}
+            autoCapitalize="none"
+            keyboardType="numeric"
+            editable={!isLoading}
+          />
+          <Text style={styles.colon}>:</Text>
+          <TextInput
+            style={[styles.input, { flex: 1, marginBottom: 0 }]}
+            placeholder="포트"
+            value={serverPort}
+            onChangeText={setServerPort}
+            keyboardType="numeric"
+            editable={!isLoading}
+          />
+        </View>
+
+        <Text style={[styles.sectionLabel, { marginTop: 20 }]}>로그인</Text>
         <TextInput
           style={styles.input}
           placeholder="아이디"
@@ -139,15 +169,8 @@ const styles = StyleSheet.create({
     paddingTop: 100,
     backgroundColor: Colors.light.background,
   },
-  logoContainer: {
-    alignItems: "center",
-    marginBottom: 50,
-  },
-  logoImage: {
-    width: 140,
-    height: 140,
-    marginBottom: 10,
-  },
+  logoContainer: { alignItems: "center", marginBottom: 50 },
+  logoImage: { width: 140, height: 140, marginBottom: 10 },
   title: {
     fontSize: 42,
     fontWeight: "bold",
@@ -155,9 +178,20 @@ const styles = StyleSheet.create({
     color: Colors.light.text,
     letterSpacing: 1,
   },
-  formContainer: {
-    width: "100%",
+  formContainer: { width: "100%" },
+  sectionLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#64748B",
+    marginBottom: 8,
   },
+  ipRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 0,
+  },
+  colon: { fontSize: 18, fontWeight: "700", color: "#334155" },
   input: {
     borderWidth: 1,
     borderColor: "#ccc",
@@ -167,7 +201,5 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     fontSize: 16,
   },
-  buttonContainer: {
-    marginTop: 8,
-  },
+  buttonContainer: { marginTop: 8 },
 });

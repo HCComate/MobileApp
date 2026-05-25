@@ -1,5 +1,6 @@
 import { handleAlertEvent } from "../services/alertManager";
 import { AlertEvent } from "../types/alert";
+import { isServerMode } from "./userData";
 import { MOCK_WORKERS } from "./workers";
 
 // [마스터 데이터] 다양한 에러 상황 정의
@@ -56,8 +57,8 @@ export interface RawLog {
 const DEVICE_COUNT = 25;
 const MAX_LOG_CAPACITY = 5000;
 const INITIAL_DATA_COUNT = 100;
-const ERROR_RATE = 0.000003;
-const RECOVERY_RATE = 0.0000005;
+const ERROR_RATE = 0.001;
+const RECOVERY_RATE = 0.00005;
 
 let globalSequence = 0;
 
@@ -187,16 +188,18 @@ export const resolveDeviceError = async (deviceId: string) => {
 };
 
 const init = () => {
-  const tempLogs: RawLog[] = [];
+  // 1. 초기 데이터 생성 (앱 실행 시 최초 1회만)
   for (let i = 0; i < INITIAL_DATA_COUNT; i++) {
-    const deviceId = DEVICE_IDS[i % DEVICE_COUNT];
+    const id = DEVICE_IDS[Math.floor(Math.random() * DEVICE_IDS.length)];
     globalSequence++;
-    const time = new Date(Date.now() - (INITIAL_DATA_COUNT - i) * 1000);
-    tempLogs.push(createLogEntry(deviceId, globalSequence, time));
+    MOCK_RAW_LOGS.push(createLogEntry(id, globalSequence));
   }
-  MOCK_RAW_LOGS = tempLogs.reverse();
 
+  // 2. 실시간 데이터 시뮬레이션
   setInterval(() => {
+    // ⭐ [중요] 서버 모드가 활성화되어 있다면 가짜 로그 생성을 중단합니다.
+    if (isServerMode) return;
+
     const randomCount = Math.floor(Math.random() * 5) + 3;
     const shuffled = [...DEVICE_IDS].sort(() => 0.5 - Math.random());
     const selectedIds = shuffled.slice(0, randomCount);
