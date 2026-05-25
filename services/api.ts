@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'https://8080-icny3dm5u38ez51amxhl3-0e5230d6.sg1.manus.computer/api'; // 노출된 MobileServer의 API 기본 URL
+const API_BASE_URL = 'http://192.168.45.52:8080/api'; // 노출된 MobileServer의 API 기본 URL
 
 const api = axios.create({
   baseURL: API_BASE_URL,
