@@ -36,12 +36,10 @@ export function useLogData(): RawLog[] {
 
       // 2. 실제 서버 모드 (SERVER)
       try {
-        const res = await apiClient.get<{ data: any[] }>(
-          "/api/inspections/recent",
-        );
+        const res = await apiClient.get<any>("/api/inspections/recent");
 
         if (res.data && res.data.data) {
-          const serverData = res.data.data;
+          const serverData = res.data?.data ?? res.data ?? [];
           console.log(`[useLogData] SERVER 수신 성공 (${serverData.length}건)`);
 
           const mappedLogs: RawLog[] = serverData.map((item: any) => ({

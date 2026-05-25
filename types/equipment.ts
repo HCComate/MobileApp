@@ -48,7 +48,7 @@ export interface DeviceDetail {
   vibrationX: number;
   vibrationY: number;
   illumination: number;
-  humidity: number;
+  humidity?: number;
   timestamp: string;
   statusInfos: StatusInfo[];
   visionResult: VisionResult;

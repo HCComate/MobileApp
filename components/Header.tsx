@@ -1,6 +1,7 @@
 import { Colors } from "@/constants/Colors";
 import { MENU_GROUPS } from "@/constants/GoTo";
 import { PAGE_HELP_INFO } from "@/constants/HelpContent";
+import { isServerMode } from "@/mock/userData";
 import { Ionicons } from "@expo/vector-icons";
 import { usePathname, useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -43,6 +44,19 @@ export default function Header() {
           resizeMode="contain"
         />
         <Text style={styles.logoText}>VisionMate</Text>
+
+        {/* 서버 모드 표시 */}
+        <View style={styles.modeBadge}>
+          <View
+            style={[
+              styles.modeDot,
+              { backgroundColor: isServerMode ? "#22C55E" : "#F59E0B" },
+            ]}
+          />
+          <Text style={styles.modeText}>
+            {isServerMode ? "서버" : "목업"}
+          </Text>
+        </View>
       </View>
 
       <TouchableOpacity onPress={() => setIsHelpOpen(true)}>
@@ -153,6 +167,28 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
 
+  // 모드 표시 배지
+  modeBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F1F5F9",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    marginLeft: 8,
+  },
+  modeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 4,
+  },
+  modeText: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#64748B",
+  },
+
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.4)",
@@ -185,7 +221,6 @@ const styles = StyleSheet.create({
     color: "#0f172a",
     letterSpacing: 2,
   },
-
   menuScrollView: { flex: 1, paddingHorizontal: 24 },
   groupContainer: { marginTop: 32 },
   groupTitle: {
@@ -200,15 +235,12 @@ const styles = StyleSheet.create({
     borderLeftColor: "#f1f5f9",
     paddingLeft: 16,
   },
-  menuItem: {
-    paddingVertical: 12,
-  },
+  menuItem: { paddingVertical: 12 },
   menuItemText: {
     fontSize: 16,
     color: "#334155",
     fontWeight: "500",
   },
-
   helpOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
