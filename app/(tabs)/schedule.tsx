@@ -1,6 +1,13 @@
 import { Stack } from "expo-router";
 import React, { useMemo, useState } from "react";
-import { FlatList, Image, StyleSheet, View } from "react-native";
+import {
+  ActivityIndicator,
+  FlatList,
+  RefreshControl,
+  StyleSheet,
+  useColorScheme,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import CalendarView from "../../components/CalendarView";
 import Header from "../../components/Header";
@@ -8,27 +15,44 @@ import InfoBanner from "../../components/InfoBanner";
 import { ThemedText } from "../../components/themed-text";
 import { ThemedView } from "../../components/themed-view";
 import { Colors } from "../../constants/Colors";
-import { generateMonthlySchedule } from "../../mock/schedule";
+import { useScheduleData } from "../../hooks/useScheduleData";
 
 export default function ScheduleScreen() {
-  const now = useMemo(() => new Date(), []);
+  const colorScheme = useColorScheme() ?? "light";
+  const backgroundColor = Colors[colorScheme].background;
+  const isDark = colorScheme === "dark";
 
-  const [selectedDate, setSelectedDate] = useState(
-    `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, "0")}-${now.getDate().toString().padStart(2, "0")}`,
-  );
+  const cardBgColor = isDark ? "#1E1E1E" : "#FFF";
+  const cardBorderColor = isDark ? "#2C2C2C" : "#F0F0F0";
+  const mainTextColor = isDark ? "#FFF" : "#333";
+  const subTextColor = isDark ? "#BBB" : "#666";
 
-  const monthlyData = useMemo(() => {
-    return generateMonthlySchedule(now.getFullYear(), now.getMonth() + 1);
-  }, [now]);
+  const initialDateString = useMemo(() => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }, []);
 
-  const currentWorkers = useMemo(() => {
-    const dayData = monthlyData.find((s) => s.date === selectedDate);
-    return dayData ? dayData.workers : [];
-  }, [selectedDate, monthlyData]);
+  const [selectedDate, setSelectedDate] = useState(initialDateString);
+  const { workers, loading, refreshing, refresh } =
+    useScheduleData(selectedDate);
+
+  const getRoleBadgeColor = (role: string) => {
+    switch (role) {
+      case "MASTER":
+        return "#E14D4D";
+      case "TECHNICIAN":
+        return "#3055C1";
+      default:
+        return "#2E9D62";
+    }
+  };
 
   return (
     <SafeAreaView
-      style={[styles.safeArea, { backgroundColor: Colors.light.background }]}
+      style={[styles.safeArea, { backgroundColor }]}
       edges={["top", "right", "left"]}
     >
       <Stack.Screen options={{ headerShown: false }} />
@@ -37,11 +61,10 @@ export default function ScheduleScreen() {
       <ThemedView style={styles.container}>
         <View style={styles.bannerSection}>
           <InfoBanner
-            text={`선택된 날짜에 ${currentWorkers.length}명의 인원이 배정되었습니다.`}
+            text={`선택된 날짜에 ${workers.length}명의 인원이 배정되었습니다.`}
           />
         </View>
 
-        {/* 달력 */}
         <View style={styles.calendarSection}>
           <CalendarView
             selectedDate={selectedDate}
@@ -49,37 +72,90 @@ export default function ScheduleScreen() {
           />
         </View>
 
-        {/* 근무자 리스트 */}
         <View style={styles.listSection}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>
+          <ThemedText
+            type="subtitle"
+            style={[styles.sectionTitle, { color: mainTextColor }]}
+          >
             {selectedDate.split("-")[2]}일 근무 확정 인원
           </ThemedText>
 
-          <FlatList
-            data={currentWorkers}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <ThemedView style={styles.workerRow}>
-                <Image source={{ uri: item.image }} style={styles.avatar} />
-                <View style={styles.workerInfo}>
-                  <ThemedText type="defaultSemiBold">{item.name}</ThemedText>
-                  <ThemedText style={styles.workerId}>
-                    사번 {item.id}
-                  </ThemedText>
-                </View>
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#3055C1" />
+            </View>
+          ) : (
+            <FlatList
+              data={workers}
+              keyExtractor={(item) => item.id.toString()}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={refresh}
+                  colors={["#3055C1"]}
+                  tintColor="#3055C1"
+                />
+              }
+              renderItem={({ item }) => (
                 <View
                   style={[
-                    styles.shiftBadge,
-                    { backgroundColor: Colors.light.tint },
+                    styles.workerRow,
+                    {
+                      backgroundColor: cardBgColor,
+                      borderColor: cardBorderColor,
+                    },
                   ]}
                 >
-                  <ThemedText style={styles.shiftText}>주간</ThemedText>
+                  <View
+                    style={[
+                      styles.avatarPlaceholder,
+                      { backgroundColor: isDark ? "#333" : "#F0F2F5" },
+                    ]}
+                  >
+                    <ThemedText
+                      style={[styles.avatarText, { color: mainTextColor }]}
+                    >
+                      {item.nickname.substring(0, 1)}
+                    </ThemedText>
+                  </View>
+                  <View style={styles.workerInfo}>
+                    <ThemedText
+                      type="defaultSemiBold"
+                      style={{ color: mainTextColor }}
+                    >
+                      {item.nickname}
+                    </ThemedText>
+                    <ThemedText
+                      style={[styles.workerId, { color: subTextColor }]}
+                    >
+                      사번 {item.emp_id} • 계정 {item.username}
+                    </ThemedText>
+                  </View>
+                  <View
+                    style={[
+                      styles.shiftBadge,
+                      { backgroundColor: getRoleBadgeColor(item.role) },
+                    ]}
+                  >
+                    <ThemedText style={styles.shiftText}>
+                      {item.role}
+                    </ThemedText>
+                  </View>
                 </View>
-              </ThemedView>
-            )}
-            contentContainerStyle={{ paddingBottom: 30 }}
-            showsVerticalScrollIndicator={false}
-          />
+              )}
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                  <ThemedText
+                    style={[styles.emptyText, { color: subTextColor }]}
+                  >
+                    해당 날짜에 확정된 배정 인원이 없습니다.
+                  </ThemedText>
+                </View>
+              }
+              contentContainerStyle={{ paddingBottom: 30 }}
+              showsVerticalScrollIndicator={false}
+            />
+          )}
         </View>
       </ThemedView>
     </SafeAreaView>
@@ -89,6 +165,12 @@ export default function ScheduleScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   container: { flex: 1 },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingTop: 30,
+  },
   bannerSection: {
     paddingHorizontal: 15,
     marginTop: 15,
@@ -108,13 +190,23 @@ const styles = StyleSheet.create({
   workerRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    padding: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginBottom: 10,
   },
-  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: "#EEE" },
+  avatarPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  avatarText: { fontSize: 14, fontWeight: "bold" },
   workerInfo: { flex: 1, marginLeft: 15 },
-  workerId: { fontSize: 12, opacity: 0.6, marginTop: 2 },
-  shiftBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 },
-  shiftText: { fontSize: 11, color: "#FFFFFF", fontWeight: "bold" },
+  workerId: { fontSize: 12, marginTop: 2 },
+  shiftBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  shiftText: { fontSize: 10, color: "#FFFFFF", fontWeight: "bold" },
+  emptyContainer: { paddingTop: 40, alignItems: "center" },
+  emptyText: { fontSize: 14, opacity: 0.5 },
 });
