@@ -3,11 +3,14 @@ import React from "react";
 import { FlatList, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "../../../components/Header";
-import { MOCK_RAW_LOGS } from "../../../mock/logs";
+import { useLogData } from "../../../hooks/updateData"; // useLogData 훅 임포트
+import { RawLog } from "../../../mock/Logs"; // 타입 임포트
 
 export default function AllLogScreen() {
-  const getStatusStyle = (item: (typeof MOCK_RAW_LOGS)[0]) => {
-    const info = item.body.status_info[0];
+  const logs = useLogData(); // 서버로부터 실시간 로그 데이터 가져오기
+
+  const getStatusStyle = (item: RawLog) => {
+    const info = item.body.status_info[0] || { msg: "", severity: "LOW" };
     const msg = info.msg.toLowerCase();
 
     // 문제 해결은 파란색
@@ -34,14 +37,13 @@ export default function AllLogScreen() {
     return { backgroundColor: "#F2F4F7", textColor: "#333333" };
   };
 
-  const renderLogItem = ({ item }: { item: (typeof MOCK_RAW_LOGS)[0] }) => {
+  const renderLogItem = ({ item }: { item: RawLog }) => {
     const style = getStatusStyle(item);
-    const info = item.body.status_info[0];
+    const info = item.body.status_info[0] || { msg: "No Message" };
 
     return (
       <View style={[styles.logRow, { backgroundColor: style.backgroundColor }]}>
         <View style={styles.deviceCell}>
-          {/* 데이터에서 장비 ID 직접 바인딩 */}
           <Text
             style={[
               styles.cellText,
@@ -52,15 +54,15 @@ export default function AllLogScreen() {
           </Text>
         </View>
         <View style={styles.timeCell}>
+          {/* 타임스탬프가 있는 경우에만 분할 처리 */}
           <Text style={[styles.timeText, { color: style.textColor }]}>
-            {item.body.timestamp.split(" ")[0]}
+            {item.body.timestamp?.split(" ")[0] || ""}
           </Text>
           <Text style={[styles.timeText, { color: style.textColor }]}>
-            {item.body.timestamp.split(" ")[1]}
+            {item.body.timestamp?.split(" ")[1] || ""}
           </Text>
         </View>
         <View style={styles.msgCell}>
-          {/* 데이터에서 메시지 직접 바인딩 */}
           <Text
             style={[styles.cellText, { color: style.textColor }]}
             numberOfLines={1}
@@ -78,7 +80,7 @@ export default function AllLogScreen() {
       <Header />
       <View style={styles.container}>
         <View style={styles.pageHeader}>
-          <Text style={styles.headerTitle}>전체 로그 보기</Text>
+          <Text style={styles.headerTitle}>전체 로그 보기 (실시간)</Text>
         </View>
         <View style={styles.columnHeader}>
           <Text style={[styles.columnText, { flex: 0.8 }]}>장비</Text>
@@ -86,10 +88,15 @@ export default function AllLogScreen() {
           <Text style={[styles.columnText, { flex: 2 }]}>로그 내용</Text>
         </View>
         <FlatList
-          data={MOCK_RAW_LOGS}
-          keyExtractor={(item) => item.body.sequence.toString()}
+          data={logs}
+          keyExtractor={(item, index) => item.body.sequence.toString() + index}
           renderItem={renderLogItem}
           showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>수신된 로그가 없습니다.</Text>
+            </View>
+          }
         />
       </View>
     </SafeAreaView>
@@ -130,4 +137,6 @@ const styles = StyleSheet.create({
   msgCell: { flex: 2, paddingLeft: 10 },
   cellText: { fontSize: 14 },
   timeText: { fontSize: 11 },
+  emptyContainer: { flex: 1, alignItems: "center", marginTop: 50 },
+  emptyText: { color: "#999", fontSize: 14 },
 });

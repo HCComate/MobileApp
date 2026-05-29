@@ -1,5 +1,5 @@
 import { Stack, useRouter } from "expo-router";
-import React from "react";
+import React, { useMemo } from "react";
 import {
   Dimensions,
   FlatList,
@@ -11,7 +11,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import DeviceIcon from "../../../components/DeviceIcon";
 import Header from "../../../components/Header";
-import { MOCK_DEVICES } from "../../../mock/devices";
+import PageHeader from "../../../components/PageHeader";
+import { generateMockSummaries } from "../../../mock/deviceMocks";
+import { PageStyles } from "../../../styles/PageStyles";
+import { DeviceSummary } from "../../../types/equipment";
 
 const { width } = Dimensions.get("window");
 const COLUMN_COUNT = 4;
@@ -20,51 +23,54 @@ const ITEM_SIZE = (width - 40) / COLUMN_COUNT;
 export default function DeviceLogScreen() {
   const router = useRouter();
 
-  const renderDeviceItem = ({ item }: { item: (typeof MOCK_DEVICES)[0] }) => (
+  const devices = useMemo(() => generateMockSummaries(), []);
+
+  const renderDeviceItem = ({ item }: { item: DeviceSummary }) => (
     <TouchableOpacity
       style={styles.deviceCard}
       onPress={() =>
         router.push({
           pathname: "/log/detail",
           params: {
-            deviceId: item.id,
-            deviceName: item.name,
+            deviceId: item.deviceId,
+            deviceName: item.modelName,
           },
         })
       }
       activeOpacity={0.7}
     >
       <DeviceIcon
-        status={item.status}
-        name={item.name}
+        status={item.machineStatus}
+        name={item.deviceId}
         size={ITEM_SIZE * 0.8}
       />
+      <Text style={styles.deviceLabel} numberOfLines={1}>
+        {item.deviceId.replace("RASP_PI_", "#")}
+      </Text>
     </TouchableOpacity>
   );
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "right", "left"]}>
+    <SafeAreaView style={PageStyles.safeArea} edges={["top", "right", "left"]}>
       {/* 중복 헤더 방지 */}
       <Stack.Screen options={{ headerShown: false }} />
 
       <Header />
 
-      <View style={styles.container}>
-        <View style={styles.pageHeader}>
-          <Text style={styles.headerTitle}>장비별 로그 보기</Text>
-        </View>
+      <View style={PageStyles.container}>
+        <PageHeader title="장비별 로그 보기" />
+        <View style={{ marginBottom: 30 }} />
 
-        {/* 장비 리스트 */}
         <FlatList
-          data={MOCK_DEVICES}
-          keyExtractor={(item) => item.id}
+          data={devices}
+          keyExtractor={(item) => item.deviceId}
           renderItem={renderDeviceItem}
           numColumns={COLUMN_COUNT}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>연결된 장비가 없습니다.</Text>
+              <Text style={PageStyles.emptyText}>연결된 장비가 없습니다.</Text>
             </View>
           }
         />
@@ -74,24 +80,6 @@ export default function DeviceLogScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-  },
-  container: {
-    flex: 1,
-  },
-  pageHeader: {
-    backgroundColor: "#1D1D5A",
-    paddingVertical: 15,
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#FFFFFF",
-  },
   listContent: {
     paddingHorizontal: 10,
     paddingBottom: 30,
@@ -99,15 +87,17 @@ const styles = StyleSheet.create({
   deviceCard: {
     width: ITEM_SIZE,
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: 20,
+  },
+  deviceLabel: {
+    fontSize: 10,
+    color: "#64748B",
+    marginTop: 4,
+    fontWeight: "600",
   },
   emptyContainer: {
     flex: 1,
     alignItems: "center",
     marginTop: 100,
-  },
-  emptyText: {
-    color: "#999",
-    fontSize: 16,
   },
 });

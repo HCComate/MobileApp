@@ -1,3 +1,4 @@
+import Constants from "expo-constants";
 import { Href, Stack, useRouter } from "expo-router";
 import React from "react";
 import {
@@ -9,13 +10,25 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Header from "../../../components/Header";
+import PageHeader from "../../../components/PageHeader";
 import { Colors } from "../../../constants/Colors";
 
 const { height } = Dimensions.get("window");
 
 export default function LogMainMenu() {
+  // 라우터 설정
   const router = useRouter();
+  // 앱 버전
+  const appVersion = Constants.expoConfig?.version || "1.0.0";
+  // 현재 날짜와 시간
+  const currentTime = new Date().toLocaleString("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
 
   const LOG_MENUS = [
     { title: "전체 로그 보기", path: "/log/all" as Href },
@@ -27,17 +40,15 @@ export default function LogMainMenu() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "right", "left"]}>
+      {/* 기본 상단바 숨기기 설정 */}
       <Stack.Screen options={{ headerShown: false }} />
-      <Header />
+      <PageHeader title="장비 로그 보기" showBack={true} />
 
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.contentContainer}
       >
-        <View style={styles.titleBanner}>
-          <Text style={styles.bannerText}>장비 로그 보기</Text>
-        </View>
-
+        {/* 메뉴 그리드 */}
         <View style={styles.menuGrid}>
           {LOG_MENUS.map((menu, index) => (
             <TouchableOpacity
@@ -46,15 +57,18 @@ export default function LogMainMenu() {
               onPress={() => router.push(menu.path)}
               activeOpacity={0.7}
             >
+              <Text style={[styles.arrowText, { opacity: 0 }]}>›</Text>
               <Text style={styles.menuText}>{menu.title}</Text>
+              <Text style={styles.arrowText}>›</Text>
             </TouchableOpacity>
           ))}
         </View>
 
+        {/* 하단 정보 영역 */}
         <View style={styles.footerInfo}>
           <View style={styles.divider} />
           <Text style={styles.versionText}>
-            VisionMate v1.0.4 - Last Updated 17:44
+            VisionMate v{appVersion} - Last Updated: {currentTime}
           </Text>
         </View>
       </ScrollView>
@@ -66,47 +80,42 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: Colors.light.background },
   container: { flex: 1 },
   contentContainer: {
+    paddingTop: 20,
     paddingBottom: 40,
     minHeight: height * 0.8,
   },
-  titleBanner: {
-    backgroundColor: "#1D1D5A",
-    paddingVertical: 25,
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  bannerText: { fontSize: 22, fontWeight: "bold", color: "#FFFFFF" },
   menuGrid: { paddingHorizontal: 20, gap: 15 },
   menuButton: {
     backgroundColor: "#4A4A6A",
     paddingVertical: 22,
+    paddingHorizontal: 20,
     borderRadius: 12,
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "space-between",
     elevation: 4,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  menuText: { fontSize: 18, fontWeight: "600", color: "#FFFFFF" },
-
+  menuText: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#FFFFFF",
+    textAlign: "center",
+    flex: 1,
+  },
+  arrowText: {
+    fontSize: 24,
+    color: "rgba(255, 255, 255, 0.4)",
+    fontWeight: "300",
+    width: 20,
+  },
   footerInfo: {
     marginTop: 40,
     paddingHorizontal: 30,
     alignItems: "center",
-  },
-  infoTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#1D1D5A",
-    marginBottom: 8,
-  },
-  infoDesc: {
-    fontSize: 14,
-    color: "#666",
-    textAlign: "center",
-    lineHeight: 20,
   },
   divider: {
     width: 40,
@@ -114,5 +123,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#DDD",
     marginVertical: 15,
   },
-  versionText: { fontSize: 12, color: "#AAA" },
+  versionText: {
+    fontSize: 12,
+    color: "#AAA",
+    textAlign: "center",
+  },
 });

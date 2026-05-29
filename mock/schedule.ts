@@ -1,53 +1,133 @@
-import { MOCK_WORKERS, Worker } from "./workers";
-
-export interface DailySchedule {
-  date: string; // "YYYY-MM-DD"
-  workers: Worker[];
+export interface WorkerSchedule {
+  id: number;
+  username: string;
+  nickname: string;
+  emp_id: string;
+  role: string;
 }
 
-// 특정 연도와 월의 모든 날짜에 대해 최소 3명 이상의 근무자를 자동 배정합니다.
-export const generateMonthlySchedule = (
-  year: number,
-  month: number,
-): DailySchedule[] => {
-  const schedule: DailySchedule[] = [];
+export interface ScheduleMap {
+  [date: string]: WorkerSchedule[];
+}
 
-  // 해당 월의 마지막 날짜 구하기 (윤달 등 자동 계산)
-  const lastDay = new Date(year, month, 0).getDate();
+export const MOCK_SCHEDULES: ScheduleMap = {
+  "2026-05-26": [
+    {
+      id: 1,
+      username: "operator_01",
+      nickname: "홍길동",
+      emp_id: "EMP_001",
+      role: "OPERATOR",
+    },
+    {
+      id: 2,
+      username: "operator_02",
+      nickname: "김철수",
+      emp_id: "EMP_002",
+      role: "OPERATOR",
+    },
+    {
+      id: 3,
+      username: "technician_01",
+      nickname: "이영희",
+      emp_id: "EMP_003",
+      role: "TECHNICIAN",
+    },
+  ],
 
-  for (let day = 1; day <= lastDay; day++) {
-    const dateStr = `${year}-${month.toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
+  "2026-05-27": [
+    {
+      id: 4,
+      username: "operator_03",
+      nickname: "박민수",
+      emp_id: "EMP_004",
+      role: "OPERATOR",
+    },
+    {
+      id: 5,
+      username: "operator_04",
+      nickname: "최지은",
+      emp_id: "EMP_005",
+      role: "OPERATOR",
+    },
+    {
+      id: 6,
+      username: "technician_02",
+      nickname: "정우성",
+      emp_id: "EMP_006",
+      role: "TECHNICIAN",
+    },
+  ],
 
-    // 날짜와 인덱스 조합으로 근무자 선택
-    let dailyWorkers = MOCK_WORKERS.filter((_, index) => {
-      // 날짜(day)와 월(month)을 조합해 매일 다른 패턴 생성
-      const seed = (day + month + index) % 5;
-      // 인덱스 0, 1은 고정 배치하고 나머지는 시드에 따라 선택 (최소 3명 유도)
-      return index < 2 || seed < 2;
-    });
+  "2026-05-28": [
+    {
+      id: 7,
+      username: "operator_05",
+      nickname: "한지민",
+      emp_id: "EMP_007",
+      role: "OPERATOR",
+    },
+    {
+      id: 8,
+      username: "operator_06",
+      nickname: "유재석",
+      emp_id: "EMP_008",
+      role: "OPERATOR",
+    },
+    {
+      id: 9,
+      username: "master_01",
+      nickname: "관리자",
+      emp_id: "EMP_009",
+      role: "MASTER",
+    },
+  ],
 
-    // 3명 미만일 경우 부족한 인원 보충
-    if (dailyWorkers.length < 3) {
-      const remainingWorkers = MOCK_WORKERS.filter(
-        (mw) => !dailyWorkers.find((dw) => dw.id === mw.id),
-      );
+  "2026-05-29": [
+    {
+      id: 10,
+      username: "operator_07",
+      nickname: "강호동",
+      emp_id: "EMP_010",
+      role: "OPERATOR",
+    },
+    {
+      id: 11,
+      username: "technician_03",
+      nickname: "신동엽",
+      emp_id: "EMP_011",
+      role: "TECHNICIAN",
+    },
+    {
+      id: 12,
+      username: "operator_08",
+      nickname: "송지효",
+      emp_id: "EMP_012",
+      role: "OPERATOR",
+    },
+  ],
 
-      while (dailyWorkers.length < 3 && remainingWorkers.length > 0) {
-        dailyWorkers.push(remainingWorkers.shift()!);
-      }
-    }
-
-    schedule.push({
-      date: dateStr,
-      workers: dailyWorkers,
-    });
-  }
-
-  return schedule;
+  "2026-05-30": [
+    {
+      id: 13,
+      username: "operator_09",
+      nickname: "차은우",
+      emp_id: "EMP_013",
+      role: "OPERATOR",
+    },
+    {
+      id: 14,
+      username: "operator_10",
+      nickname: "안유진",
+      emp_id: "EMP_014",
+      role: "OPERATOR",
+    },
+    {
+      id: 15,
+      username: "technician_04",
+      nickname: "장원영",
+      emp_id: "EMP_015",
+      role: "TECHNICIAN",
+    },
+  ],
 };
-
-const now = new Date();
-export const INITIAL_SCHEDULE = generateMonthlySchedule(
-  now.getFullYear(),
-  now.getMonth() + 1,
-);

@@ -3,7 +3,7 @@ import React from "react";
 import { StyleSheet, Text, View, ViewStyle } from "react-native";
 
 interface DeviceIconProps {
-  status: "RUN" | "ERROR" | "OFF";
+  status: "RUN" | "ERROR" | "IDLE" | "STOP" | "OFF";
   name?: string;
   size?: number;
   style?: ViewStyle;
@@ -17,10 +17,16 @@ export default function DeviceIcon({
 }: DeviceIconProps) {
   const getStatusColor = () => {
     switch (status) {
+      case "RUN":
+        return "#4ADE80"; // RUN: 초록색
       case "ERROR":
-        return "#FF4D4D";
+        return "#FF4D4D"; // ERROR: 빨간색
+      case "IDLE":
+        return "#FB923C"; // IDLE: 주황색
+      case "STOP":
+        return "#94A3B8"; // STOP: 회색
       case "OFF":
-        return "#999999";
+        return "#999999"; // OFF: 진회색
       default:
         return "#4A4A6A";
     }

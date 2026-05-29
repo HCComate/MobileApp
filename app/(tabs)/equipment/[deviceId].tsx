@@ -1,295 +1,266 @@
-// ─────────────────────────────────────────────
-//  app/(tabs)/equipment/[deviceId].tsx
-//  장비 상세 화면
-// ─────────────────────────────────────────────
-
-import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    Dimensions,
-    Image,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert as RNAlert,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import Header from "../../../components/Header";
 import {
-    EQ_COLORS,
-    SEVERITY_COLOR,
-    STATUS_COLOR,
-    STATUS_LABEL,
+  EQ_COLORS,
+  SEVERITY_COLOR,
+  STATUS_COLOR,
+  STATUS_LABEL,
 } from "../../../constants/equipmentConstants";
-import { deviceStore } from "../../../store/deviceStore";
-import { DeviceDetail, StatusInfo } from "../../../types/equipment";
-
-const { width: SW } = Dimensions.get("window");
-
-type CameraTab = "front" | "side" | "rear";
-const CAM_TABS: { key: CameraTab; label: string }[] = [
-  { key: "front", label: "전면" },
-  { key: "side", label: "측면" },
-  { key: "rear", label: "후면" },
-];
+import { useLogData } from "../../../hooks/updateData";
+import { resolveDeviceError } from "../../../mock/Logs";
+import {
+  getActiveAlertByDeviceId,
+  isCurrentUserAcceptor,
+  resolveAlertByDeviceId,
+} from "../../../services/alertManager";
+import {
+  DeviceDetail,
+  Direction,
+  MachineStatus,
+  VisionStatus,
+} from "../../../types/equipment";
+import apiClient from "../../../services/apiClient"; // api 대신 apiClient 사용 권장 (baseURL 설정 반영)
 
 export default function DeviceDetailScreen() {
-  const router = useRouter();
   const { deviceId } = useLocalSearchParams<{ deviceId: string }>();
+  const router = useRouter();
+  const logs = useLogData();
+  
+  const [showResolveButton, setShowResolveButton] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [serverDevice, setServerDevice] = useState<DeviceDetail | null>(null);
 
-  const [detail, setDetail] = useState<DeviceDetail | null>(null);
-  const [camTab, setCamTab] = useState<CameraTab>("front");
-  const [loading, setLoading] = useState(true);
-
-  // ⚠️ 테스트용: store 더미 상세 데이터 조회
-  // TODO: 통신 연동 시 아래 블록을 API 호출로 교체
-  //   try {
-  //     const res  = await fetch(
-  //       `http://서버IP:포트/api/devices/${deviceId}/detail`,
-  //       { headers: { Authorization: `Bearer ${token}` } }
-  //     );
-  //     const data: DeviceDetail = await res.json();
-  //     deviceStore.setDetail(data);
-  //     setDetail(data);
-  //   } catch (e) { setDetail(null); }
-  //   finally    { setLoading(false); }
+  // 1. 서버 데이터 fetch 로직 (사용자 제안 디버깅 로그 포함)
   useEffect(() => {
-    const found = deviceStore.getDetail(deviceId);
-    if (found) {
-      setDetail(found);
-      setLoading(false);
-      return;
-    }
+    console.log("상세 페이지 진입 - 장비 ID:", deviceId);
 
-    // 세부정보가 없을 때는 목록 요약에서 임시로 보완하여 표시
-    const summary = deviceStore.get(deviceId);
-    if (summary) {
-      const partial: DeviceDetail = {
-        deviceId: summary.deviceId,
-        modelName: summary.modelName,
-        batchId: "UNKNOWN",
-        sequence: summary.lastSequence ?? 0,
-        machineStatus: summary.machineStatus,
-        temperature: 0,
-        vibrationX: 0,
-        vibrationY: 0,
-        illumination: 0,
-        humidity: 0,
-        timestamp: summary.timestamp,
-        statusInfos: [],
-        visionResult: {
-          result: (summary.visionResult ?? "OK") as any,
-          defectType: "",
-          confidence: 0,
-          inspectionArea: "",
-          imageUrl: null,
-        },
-      };
-      setDetail(partial);
-      setLoading(false);
-      return;
-    }
+    const fetchDetail = async () => {
+      if (!deviceId) return;
+      
+      try {
+        console.log("데이터 요청 시작 (URL: /api/devices/" + deviceId + "/detail)...");
+        // 주의: 분석 결과 서버 경로는 /api/devices/{id}/detail 입니다.
+        const response = await apiClient.get(`/api/devices/${deviceId}/detail`);
+        
+        console.log("데이터 수신 성공 (Raw):", response.data);
+        
+        // MobileServer는 ApiResponse 래퍼를 사용하므로 response.data.data를 확인해야 함
+        const actualData = response.data.success ? response.data.data : response.data;
+        console.log("실제 데이터 추출:", actualData);
+        
+        setServerDevice(actualData);
+      } catch (error: any) {
+        console.error("데이터 요청 실패:", error);
+        console.error("에러 상세:", error.response?.data || error.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-    const timer = setTimeout(() => {
-      setDetail(deviceStore.getDetail(deviceId) ?? null);
-      setLoading(false);
-    }, 300);
-    return () => clearTimeout(timer);
+    fetchDetail();
   }, [deviceId]);
 
-  if (loading) {
+  // 2. 알림 해결 버튼 권한 체크
+  useEffect(() => {
+    if (deviceId) {
+      const activeAlert = getActiveAlertByDeviceId(deviceId);
+      if (activeAlert && activeAlert.acceptedBy) {
+        const isAcceptor = isCurrentUserAcceptor(
+          activeAlert.alertEvent.alertId,
+        );
+        setShowResolveButton(isAcceptor);
+      } else {
+        setShowResolveButton(false);
+      }
+    }
+  }, [logs, deviceId]);
+
+  // 3. 렌더링용 데이터 결정 (서버 데이터 우선, 없으면 로그 데이터에서 매핑)
+  const detail: DeviceDetail | null = useMemo(() => {
+    if (serverDevice) return serverDevice;
+
+    const currentDeviceLog = logs.find((l) => l.header?.device_id === deviceId);
+    if (!currentDeviceLog) return null;
+
+    const body = currentDeviceLog.body;
+    return {
+      deviceId: deviceId as string,
+      batchId: currentDeviceLog.header.batch_id,
+      modelName: currentDeviceLog.header.model_name,
+      sequence: body.sequence,
+      machineStatus: body.machine_status as MachineStatus,
+      temperature: body.sensor_data.temperature,
+      vibrationX: body.sensor_data.vibration_x,
+      vibrationY: body.sensor_data.vibration_y,
+      illumination: body.sensor_data.illumination,
+      humidity: body.sensor_data.humidity || 0,
+      timestamp: body.timestamp,
+      statusInfos: body.status_info.map((info) => ({
+        code: info.code,
+        msg: info.msg,
+        severity: info.severity,
+        direction: info.direction as Direction,
+        partLocation: info.part_location as string,
+        isCaptureRequired: info.is_capture_required,
+      })),
+      visionResult: {
+        result: body.vision_result.result as VisionStatus,
+        defectType: body.vision_result.defect_type,
+        confidence: body.vision_result.confidence,
+        inspectionArea: body.vision_result.inspection_area,
+        imageUrl: body.vision_result.image_url,
+      },
+    };
+  }, [serverDevice, logs, deviceId]);
+
+  const handleResolveError = async () => {
+    if (!deviceId) return;
+    try {
+      await resolveAlertByDeviceId(deviceId);
+      await resolveDeviceError(deviceId);
+      setShowResolveButton(false);
+      RNAlert.alert("알림", "오류 수정이 완료되었습니다.");
+    } catch (error) {
+      console.error("[DeviceDetail] 오류 수정 처리 실패:", error);
+      RNAlert.alert("오류", "처리에 실패했습니다.");
+    }
+  };
+
+  // 로딩 상태 표시
+  if (isLoading && !detail) {
     return (
-      <SafeAreaView style={styles.loadingWrap}>
-        <ActivityIndicator size="large" color={EQ_COLORS.actionBarBg} />
-        <Text style={styles.loadingText}>장비 정보 불러오는 중…</Text>
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#3B82F6" />
+        <Text style={{ marginTop: 10, color: "#64748B" }}>장비 데이터를 불러오는 중...</Text>
       </SafeAreaView>
     );
   }
 
+  // 데이터 없음 표시
   if (!detail) {
     return (
-      <SafeAreaView style={styles.loadingWrap}>
-        <Text style={styles.loadingText}>장비를 찾을 수 없어요.</Text>
-        <TouchableOpacity
-          style={styles.backFallbackBtn}
-          onPress={() => router.replace("/equipment")}
-        >
-          <Text style={styles.backFallbackText}>목록으로 돌아가기</Text>
+      <SafeAreaView style={styles.loadingContainer}>
+        <Text style={{ color: "#64748B" }}>장비 정보를 찾을 수 없습니다.</Text>
+        <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 20 }}>
+          <Text style={{ color: "#3B82F6" }}>뒤로 가기</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
   }
 
-  const statusColor = STATUS_COLOR[detail.machineStatus];
-  const isNG = detail.visionResult.result === "NG";
-
-  // ⚠️ 테스트용: NG일 때 더미 imageUrl 표시
-  // TODO: 통신 연동 시 서버에서 받은 imageUrl 그대로 사용
-  const imageUrl = detail.visionResult.imageUrl;
+  const statusColor = STATUS_COLOR[detail.machineStatus] || "#94A3B8";
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top", "right", "left"]}>
+      <Stack.Screen options={{ headerShown: false }} />
       <StatusBar
         barStyle="light-content"
         backgroundColor={EQ_COLORS.headerBg}
       />
-
-      {/* 헤더 */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => router.replace("/equipment")}
-        >
-          <Text style={styles.backBtnText}>‹</Text>
-        </TouchableOpacity>
-        <View style={{ alignItems: "center" }}>
-          <Text style={styles.headerTitle}>{detail.deviceId} 상세 정보</Text>
-          <Text style={styles.headerSub}>{detail.modelName}</Text>
-        </View>
-        <View style={{ width: 40 }} />
-      </View>
-
+      <Header />
       <ScrollView
+        style={styles.scrollView}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scroll}
       >
-        {/* 상태 배지 */}
-        <View style={styles.statusRow}>
+        <View style={styles.statusSection}>
           <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
             <Text style={styles.statusBadgeText}>
               {STATUS_LABEL[detail.machineStatus]}
             </Text>
           </View>
-          {isNG && (
+          <Text style={styles.deviceId}>{detail.deviceId}</Text>
+          <Text style={styles.modelName}>{detail.modelName}</Text>
+        </View>
+
+        <View style={styles.infoCard}>
+          <Text style={styles.cardTitle}>주요 정보</Text>
+          <View style={styles.divider} />
+          <InfoRow label="배치 ID" value={detail.batchId} />
+          <InfoRow label="시퀀스" value={String(detail.sequence)} />
+          <InfoRow
+            label="비전 결과"
+            value={detail.visionResult.result}
+            valueColor={
+              detail.visionResult.result === "NG"
+                ? EQ_COLORS.ngRed
+                : EQ_COLORS.okGreen
+            }
+          />
+        </View>
+
+        <View style={styles.infoCard}>
+          <Text style={styles.cardTitle}>센서 데이터</Text>
+          <View style={styles.divider} />
+          <InfoRow label="온도" value={`${detail.temperature.toFixed(1)}°C`} />
+          <InfoRow
+            label="진동 (X/Y)"
+            value={`${detail.vibrationX.toFixed(2)} / ${detail.vibrationY.toFixed(2)}`}
+          />
+          <InfoRow
+            label="조도"
+            value={`${detail.illumination.toFixed(3)} lux`}
+          />
+          <InfoRow label="습도" value={`${(detail.humidity ?? 0).toFixed(3)} %`} />
+        </View>
+
+        <View style={styles.infoCard}>
+          <Text style={styles.cardTitle}>
+            상태 정보 ({detail.statusInfos.length})
+          </Text>
+          <View style={styles.divider} />
+          {detail.statusInfos.map((status, index) => (
             <View
+              key={index}
               style={[
-                styles.statusBadge,
-                { backgroundColor: EQ_COLORS.ngRed, marginLeft: 8 },
+                styles.statusItem,
+                {
+                  borderLeftColor: SEVERITY_COLOR[status.severity] || "#CBD5E1",
+                },
               ]}
             >
-              <Text style={styles.statusBadgeText}>NG 불량 감지</Text>
-            </View>
-          )}
-          <Text style={styles.seqText}>Seq #{detail.sequence}</Text>
-        </View>
-
-        {/* 카메라 이미지 */}
-        <View style={styles.cameraCard}>
-          <View style={styles.camTabRow}>
-            {CAM_TABS.map((tab) => (
-              <TouchableOpacity
-                key={tab.key}
-                style={[styles.camTab, camTab === tab.key && styles.camTabOn]}
-                onPress={() => setCamTab(tab.key)}
-              >
-                <Text
+              <View style={styles.statusItemHeader}>
+                <Text style={styles.statusCode}>{status.code}</Text>
+                <View
                   style={[
-                    styles.camTabText,
-                    camTab === tab.key && styles.camTabTextOn,
+                    styles.severityBadge,
+                    {
+                      backgroundColor:
+                        SEVERITY_COLOR[status.severity] || "#CBD5E1",
+                    },
                   ]}
                 >
-                  {tab.label} 카메라
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <View style={styles.imageBox}>
-            {imageUrl ? (
-              <Image
-                source={{ uri: imageUrl }}
-                style={styles.cameraImage}
-                resizeMode="contain"
-              />
-            ) : (
-              <View style={styles.imagePlaceholder}>
-                <Text style={styles.imagePlaceholderIcon}>📷</Text>
-                <Text style={styles.imagePlaceholderText}>
-                  {camTab === "front"
-                    ? "전면"
-                    : camTab === "side"
-                      ? "측면"
-                      : "후면"}{" "}
-                  카메라 이미지
-                </Text>
-                <Text style={styles.imagePlaceholderSub}>
-                  이미지 수신 대기 중
-                </Text>
+                  <Text style={styles.severityText}>{status.severity}</Text>
+                </View>
               </View>
-            )}
-          </View>
-          {isNG && (
-            <View style={styles.defectBanner}>
-              <Text style={styles.defectText}>
-                🔴 결함: {detail.visionResult.defectType} | 위치:{" "}
-                {detail.visionResult.inspectionArea} | 신뢰도:{" "}
-                {(detail.visionResult.confidence * 100).toFixed(1)}%
-              </Text>
+              <Text style={styles.statusMsg}>{status.msg}</Text>
             </View>
-          )}
+          ))}
         </View>
 
-        {/* 비전 검사 결과 */}
-        <SectionCard title="비전 검사 결과">
-          <InfoRow
-            label="결과"
-            value={detail.visionResult.result}
-            valueColor={isNG ? EQ_COLORS.ngRed : EQ_COLORS.okGreen}
-          />
-          <InfoRow label="결함 유형" value={detail.visionResult.defectType} />
-          <InfoRow
-            label="신뢰도"
-            value={`${(detail.visionResult.confidence * 100).toFixed(1)}%`}
-          />
-          <InfoRow
-            label="검사 영역"
-            value={detail.visionResult.inspectionArea}
-          />
-        </SectionCard>
-
-        {/* 센서 데이터 */}
-        <SectionCard title="센서 데이터">
-          <InfoRow label="온도" value={`${detail.temperature.toFixed(1)} °C`} />
-          <InfoRow label="진동 X" value={`${detail.vibrationX.toFixed(3)} g`} />
-          <InfoRow label="진동 Y" value={`${detail.vibrationY.toFixed(3)} g`} />
-          <InfoRow label="조도" value={`${detail.illumination} lux`} />
-          <InfoRow label="습도" value={`${detail.humidity.toFixed(1)} %`} />
-        </SectionCard>
-
-        {/* 상태 코드 */}
-        <SectionCard title={`상태 코드 (${detail.statusInfos.length}건)`}>
-          {detail.statusInfos.map((info, idx) => (
-            <StatusInfoItem key={idx} info={info} />
-          ))}
-        </SectionCard>
-
-        {/* 배치 정보 */}
-        <SectionCard title="배치 정보">
-          <InfoRow label="장비 ID" value={detail.deviceId} />
-          <InfoRow label="모델명" value={detail.modelName} />
-          <InfoRow label="배치 ID" value={detail.batchId} />
-          <InfoRow label="타임스탬프" value={detail.timestamp} />
-        </SectionCard>
+        {showResolveButton && (
+          <TouchableOpacity
+            style={styles.resolveErrorButton}
+            onPress={handleResolveError}
+          >
+            <Text style={styles.resolveErrorButtonText}>오류 수정 완료</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 }
-
-// ── 소형 컴포넌트 ─────────────────────────────────
-const SectionCard = ({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) => (
-  <View style={styles.sectionCard}>
-    <Text style={styles.sectionTitle}>{title}</Text>
-    <View style={styles.divider} />
-    {children}
-  </View>
-);
 
 const InfoRow = ({
   label,
@@ -306,163 +277,77 @@ const InfoRow = ({
   </View>
 );
 
-const StatusInfoItem = ({ info }: { info: StatusInfo }) => (
-  <View
-    style={[
-      styles.statusItem,
-      { borderLeftColor: SEVERITY_COLOR[info.severity] },
-    ]}
-  >
-    <View style={styles.statusItemHeader}>
-      <Text style={styles.statusCode}>{info.code}</Text>
-      <View
-        style={[
-          styles.severityBadge,
-          { backgroundColor: SEVERITY_COLOR[info.severity] },
-        ]}
-      >
-        <Text style={styles.severityText}>{info.severity}</Text>
-      </View>
-    </View>
-    <Text style={styles.statusMsg}>{info.msg}</Text>
-    <View style={styles.chipRow}>
-      <Chip label={info.direction} />
-      <Chip label={info.partLocation} />
-      {info.isCaptureRequired && (
-        <Chip label="촬영 필요" color={EQ_COLORS.ngRed} />
-      )}
-    </View>
-  </View>
-);
-
-const Chip = ({
-  label,
-  color = EQ_COLORS.textSecondary,
-}: {
-  label: string;
-  color?: string;
-}) => (
-  <View style={[styles.chip, { borderColor: color }]}>
-    <Text style={[styles.chipText, { color }]}>{label}</Text>
-  </View>
-);
-
-// ── 스타일 ────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: EQ_COLORS.pageBg },
-  loadingWrap: {
+  loadingContainer: {
     flex: 1,
-    alignItems: "center",
     justifyContent: "center",
-    backgroundColor: EQ_COLORS.pageBg,
-    gap: 16,
-  },
-  loadingText: { color: EQ_COLORS.textSecondary, fontSize: 14 },
-  backFallbackBtn: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: EQ_COLORS.actionBarBg,
-    borderRadius: 8,
-  },
-  backFallbackText: { color: EQ_COLORS.white, fontSize: 14, fontWeight: "600" },
-  scroll: { padding: 16, gap: 14, paddingBottom: 40 },
-  header: {
-    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    backgroundColor: "#F8FAFC",
+  },
+  container: { flex: 1, backgroundColor: "#F8FAFC" },
+  scrollView: { flex: 1, padding: 16 },
+  statusSection: {
+    alignItems: "center",
+    paddingVertical: 24,
     backgroundColor: EQ_COLORS.headerBg,
-    paddingHorizontal: 12,
-    paddingVertical: 14,
+    marginHorizontal: -16,
+    marginTop: -16,
+    marginBottom: 16,
   },
-  backBtn: { width: 40, alignItems: "center" },
-  backBtnText: { color: EQ_COLORS.white, fontSize: 28, lineHeight: 30 },
-  headerTitle: { color: EQ_COLORS.white, fontSize: 16, fontWeight: "700" },
-  headerSub: { color: "#93C5FD", fontSize: 11, marginTop: 2 },
-  statusRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  statusBadge: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 14 },
-  statusBadgeText: { color: EQ_COLORS.white, fontSize: 12, fontWeight: "700" },
-  seqText: { marginLeft: "auto", color: EQ_COLORS.textMuted, fontSize: 12 },
-  cameraCard: {
-    backgroundColor: EQ_COLORS.cardBg,
-    borderRadius: 14,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
+  statusBadge: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginBottom: 8,
   },
-  camTabRow: { flexDirection: "row", backgroundColor: "#F1F5F9" },
-  camTab: { flex: 1, paddingVertical: 10, alignItems: "center" },
-  camTabOn: {
-    backgroundColor: EQ_COLORS.actionBarBg,
-    borderBottomWidth: 2,
-    borderBottomColor: EQ_COLORS.toggleActiveBg,
-  },
-  camTabText: {
-    fontSize: 12,
-    color: EQ_COLORS.textSecondary,
-    fontWeight: "600",
-  },
-  camTabTextOn: { color: EQ_COLORS.white },
-  imageBox: { height: SW * 0.65, backgroundColor: EQ_COLORS.imageBg },
-  cameraImage: { width: "100%", height: "100%" },
-  imagePlaceholder: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  imagePlaceholderIcon: { fontSize: 48 },
-  imagePlaceholderText: {
-    color: EQ_COLORS.textMuted,
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  imagePlaceholderSub: { color: EQ_COLORS.textSecondary, fontSize: 11 },
-  defectBanner: {
-    backgroundColor: EQ_COLORS.defectBannerBg,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  defectText: { color: EQ_COLORS.ngRed, fontSize: 12, fontWeight: "600" },
-  sectionCard: {
-    backgroundColor: EQ_COLORS.cardBg,
-    borderRadius: 14,
+  statusBadgeText: { color: "#FFF", fontSize: 14, fontWeight: "700" },
+  deviceId: { fontSize: 26, fontWeight: "800", color: "#FFF" },
+  modelName: { fontSize: 14, color: "#FFF", opacity: 0.8, marginTop: 4 },
+  infoCard: {
+    backgroundColor: "#FFF",
+    borderRadius: 12,
     padding: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
+    marginBottom: 16,
     elevation: 2,
   },
-  sectionTitle: { fontSize: 14, fontWeight: "700", color: EQ_COLORS.headerBg },
-  divider: {
-    height: 1,
-    backgroundColor: EQ_COLORS.divider,
-    marginVertical: 10,
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1E293B",
+    marginBottom: 12,
   },
+  divider: { height: 1, backgroundColor: "#F1F5F9", marginBottom: 12 },
   infoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: 6,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
+    marginBottom: 10,
   },
-  infoLabel: { fontSize: 13, color: EQ_COLORS.textSecondary },
-  infoValue: { fontSize: 13, fontWeight: "600" },
-  statusItem: { borderLeftWidth: 3, paddingLeft: 10, marginBottom: 12, gap: 4 },
-  statusItemHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
-  statusCode: { fontSize: 13, fontWeight: "700", color: EQ_COLORS.textPrimary },
-  severityBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
-  severityText: { color: EQ_COLORS.white, fontSize: 10, fontWeight: "700" },
-  statusMsg: { fontSize: 12, color: EQ_COLORS.textSecondary, lineHeight: 18 },
-  chipRow: { flexDirection: "row", gap: 6, flexWrap: "wrap" },
-  chip: {
-    borderWidth: 1,
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+  infoLabel: { color: "#64748B", fontSize: 14 },
+  infoValue: { fontWeight: "600", fontSize: 14, color: "#1E293B" },
+  statusItem: {
+    backgroundColor: "#F8FAFC",
+    padding: 12,
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    marginBottom: 10,
   },
-  chipText: { fontSize: 10, fontWeight: "600" },
+  statusItemHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  statusCode: { fontWeight: "700", fontSize: 14, color: "#1E293B" },
+  severityBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
+  severityText: { color: "#FFF", fontSize: 10, fontWeight: "700" },
+  statusMsg: { fontSize: 13, color: "#475569" },
+  resolveErrorButton: {
+    backgroundColor: "#10B981",
+    padding: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    marginTop: 10,
+    marginBottom: 20,
+  },
+  resolveErrorButtonText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
 });
