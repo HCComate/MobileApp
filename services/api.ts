@@ -1,26 +1,17 @@
-import axios from 'axios';
-
-const API_BASE_URL = 'http://192.168.45.52:8080/api'; // 노출된 MobileServer의 API 기본 URL
+import { CURRENT_SERVER_URL } from "@/mock/userData";
+import axios from "axios";
 
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: CURRENT_SERVER_URL,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
-// TODO: 인증 토큰이 필요한 경우 여기에 인터셉터 추가
-// api.interceptors.request.use(
-//   async (config) => {
-//     const token = await AsyncStorage.getItem('userToken');
-//     if (token) {
-//       config.headers.Authorization = `Bearer ${token}`;
-//     }
-//     return config;
-//   },
-//   (error) => {
-//     return Promise.reject(error);
-//   }
-// );
+// 매 요청마다 최신 서버 URL 반영
+api.interceptors.request.use((config) => {
+  config.baseURL = CURRENT_SERVER_URL;
+  return config;
+});
 
 export default api;

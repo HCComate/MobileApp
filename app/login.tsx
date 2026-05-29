@@ -24,8 +24,8 @@ export default function LoginScreen() {
   const router = useRouter();
   const [id, setId] = useState("");
   const [password, setPassword] = useState("");
-  const [serverIp, setServerIp] = useState("10.30.5.94");
-  const [serverPort, setServerPort] = useState("8080");
+  const [serverIp, setServerIp] = useState("localhost");
+  const [serverPort, setServerPort] = useState("5000");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async () => {
@@ -52,8 +52,10 @@ export default function LoginScreen() {
         password: trimmedPassword,
       });
 
-      const loginData = response.data?.data ?? response.data;
-      const { token, userId, name } = loginData;
+      const loginData = response.data;
+      const token = loginData.token;
+      const userId = loginData.user?.username || loginData.userId;
+      const name = loginData.user?.nickname || loginData.name || userId;
 
       if (token) {
         await AsyncStorage.setItem("userToken", token);
@@ -111,7 +113,7 @@ export default function LoginScreen() {
         <View style={styles.ipRow}>
           <TextInput
             style={[styles.input, { flex: 3, marginBottom: 0 }]}
-            placeholder="서버 IP (예: 10.30.5.94)"
+            placeholder="서버 IP (예: localhost)"
             value={serverIp}
             onChangeText={setServerIp}
             autoCapitalize="none"

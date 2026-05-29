@@ -47,22 +47,27 @@ export default function EquipmentStatsScreen() {
     }
   }, [devices]);
 
+  const devicesRef = useRef(devices);
+  useEffect(() => {
+    devicesRef.current = devices;
+  }, [devices]);
+
   const onViewableItemsChanged = useCallback(
     ({ viewableItems }: { viewableItems: ViewToken[] }) => {
       if (!viewableItems.length) return;
       const indices = viewableItems.map((v) => v.index ?? 0);
       const min = Math.max(0, Math.min(...indices) - VIRTUAL_BUFFER);
       const max = Math.min(
-        devices.length - 1,
+        devicesRef.current.length - 1,
         Math.max(...indices) + VIRTUAL_BUFFER,
       );
       const next = new Set<string>();
       for (let i = min; i <= max; i++) {
-        if (devices[i]) next.add(devices[i].deviceId);
+        if (devicesRef.current[i]) next.add(devicesRef.current[i].deviceId);
       }
       activeWindowRef.current = next;
     },
-    [devices],
+    [],
   );
 
   const totalPages = Math.max(1, Math.ceil(devices.length / GRID_PAGE_SIZE));

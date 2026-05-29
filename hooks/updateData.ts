@@ -38,8 +38,10 @@ export function useLogData(): RawLog[] {
       try {
         const res = await apiClient.get<any>("/api/inspections/recent");
 
-        if (res.data && res.data.data) {
-          const serverData = res.data?.data ?? res.data ?? [];
+        // AdminPC Server: { success: true, data: [...] } 형식
+        const serverData = res.data?.data ?? res.data ?? [];
+
+        if (Array.isArray(serverData) && serverData.length > 0) {
           console.log(`[useLogData] SERVER 수신 성공 (${serverData.length}건)`);
 
           const mappedLogs: RawLog[] = serverData.map((item: any) => ({
@@ -111,24 +113,24 @@ export function useDeviceData() {
       // 1. 실제 서버 모드
       if (isServerMode) {
         try {
-          const res = await apiClient.get<{ data: any[] }>("/api/devices");
+          const res = await apiClient.get<any>("/api/devices");
 
-          if (res.data && res.data.data) {
+          // AdminPC Server: 배열 직접 반환 [...] 또는 { data: [...] }
+          const rawData = res.data?.data ?? res.data ?? [];
+          if (Array.isArray(rawData) && rawData.length > 0) {
             console.log(
-              `[useDeviceData] SERVER 기기 목록 수신 성공 (${res.data.data.length}건)`,
+              `[useDeviceData] SERVER 기기 목록 수신 성공 (${rawData.length}건)`,
             );
 
-            const mappedDevices: DeviceSummary[] = res.data.data.map(
-              (d: any) => ({
-                deviceId: d.deviceId,
-                modelName: d.modelName,
-                machineStatus: d.machineStatus as MachineStatus,
-                timestamp: d.timestamp,
-                visionResult: d.visionResult as VisionStatus,
-                severity: d.severity as Severity,
-                lastSequence: d.lastSequence || 0,
-              }),
-            );
+            const mappedDevices: DeviceSummary[] = rawData.map((d: any) => ({
+              deviceId: d.deviceId || d.device_id,
+              modelName: d.modelName || d.model_name,
+              machineStatus: (d.machineStatus || d.status) as MachineStatus,
+              timestamp: d.timestamp,
+              visionResult: d.visionResult as VisionStatus,
+              severity: d.severity as Severity,
+              lastSequence: d.lastSequence || 0,
+            }));
 
             setDevices(mappedDevices);
             return;

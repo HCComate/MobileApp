@@ -100,7 +100,7 @@ export const MOCK_USER_LIST: UserData[] = [
     role: "MASTER",
     expiryDate: "2026.12.31",
     isPushEnabled: true,
-    serverSettings: { ip: "10.30.5.94", port: "8080", interval: "3000" },
+    serverSettings: { ip: "localhost", port: "5000", interval: "3000" },
   },
   {
     loginId: "user01",
@@ -110,7 +110,7 @@ export const MOCK_USER_LIST: UserData[] = [
     role: "TECHNICIAN",
     expiryDate: "2026.12.31",
     isPushEnabled: true,
-    serverSettings: { ip: "172.30.1.36", port: "8080", interval: "3000" },
+    serverSettings: { ip: "localhost", port: "5000", interval: "3000" },
   },
   {
     loginId: "hansung1",
@@ -130,7 +130,7 @@ export const MOCK_USER_LIST: UserData[] = [
     role: "TECHNICIAN",
     expiryDate: "2026.12.31",
     isPushEnabled: true,
-    serverSettings: { ip: "192.168.0.1", port: "8080", interval: "3000" },
+    serverSettings: { ip: "localhost", port: "5000", interval: "3000" },
   },
   {
     loginId: "hansung3",
@@ -140,7 +140,7 @@ export const MOCK_USER_LIST: UserData[] = [
     role: "OPERATOR",
     expiryDate: "2026.12.31",
     isPushEnabled: true,
-    serverSettings: { ip: "192.168.0.1", port: "8080", interval: "3000" },
+    serverSettings: { ip: "localhost", port: "5000", interval: "3000" },
   },
   {
     loginId: "hansung4",
@@ -150,7 +150,7 @@ export const MOCK_USER_LIST: UserData[] = [
     role: "OPERATOR",
     expiryDate: "2026.12.31",
     isPushEnabled: true,
-    serverSettings: { ip: "192.168.0.1", port: "8080", interval: "3000" },
+    serverSettings: { ip: "localhost", port: "5000", interval: "3000" },
   },
   {
     loginId: "hansung5",
@@ -160,7 +160,7 @@ export const MOCK_USER_LIST: UserData[] = [
     role: "OPERATOR",
     expiryDate: "2026.12.31",
     isPushEnabled: true,
-    serverSettings: { ip: "192.168.0.1", port: "8080", interval: "3000" },
+    serverSettings: { ip: "localhost", port: "5000", interval: "3000" },
   },
 ];
 
@@ -172,8 +172,7 @@ export function setCurrentLoginId(id: string) {
 
 // 현재 앱의 통신 모드 상태 관리 (기본값은 false = mock 모드)
 export let isServerMode = true;
-//export let CURRENT_SERVER_URL = "http://172.30.1.36:8080";
-export let CURRENT_SERVER_URL = "http://10.30.5.94:8080"; //학교 사용용
+export let CURRENT_SERVER_URL = "http://localhost:5000";
 export const updateServerSettings = (
   ip: string,
   port: string,
