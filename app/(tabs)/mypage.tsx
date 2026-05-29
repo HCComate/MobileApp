@@ -1,9 +1,10 @@
 import Header from "@/components/Header";
 import { CURRENT_LOGIN_ID, MOCK_USER_LIST } from "@/mock/userData";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   ScrollView,
@@ -19,7 +20,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 export default function MyPageScreen() {
   const router = useRouter();
 
-  // 25번의 유저 데이터 로직 이식: 현재 로그인된 사용자 정보 로드
+  // 현재 로그인된 사용자 정보 로드
   const currentUser =
     MOCK_USER_LIST.find((user) => user.loginId === CURRENT_LOGIN_ID) ||
     MOCK_USER_LIST[0];
@@ -28,6 +29,21 @@ export default function MyPageScreen() {
   const [refreshInterval, setRefreshInterval] = useState(
     currentUser.serverSettings.interval,
   );
+
+  // AsyncStorage에서 가져온 값을 저장할 상태
+  const [serverIp, setServerIp] = useState("");
+  const [serverPort, setServerPort] = useState("");
+
+  // 로그인 시 저장한 서버 정보 불러오기
+  useEffect(() => {
+    const loadSettings = async () => {
+      const savedIp = await AsyncStorage.getItem("serverIp");
+      const savedPort = await AsyncStorage.getItem("serverPort");
+      setServerIp(savedIp || currentUser.serverSettings.ip);
+      setServerPort(savedPort || currentUser.serverSettings.port);
+    };
+    loadSettings();
+  }, [currentUser.serverSettings.ip, currentUser.serverSettings.port]);
 
   const handleSaveSettings = () => {
     Alert.alert("설정 저장", "알림 설정이 로컬에 반영되었습니다.");
@@ -77,7 +93,7 @@ export default function MyPageScreen() {
           </View>
         </View>
 
-        {/* 서버 설정 섹션 (읽기 전용) */}
+        {/* 서버 설정 섹션 */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>서버 설정</Text>
           <View style={styles.card}>
@@ -85,7 +101,7 @@ export default function MyPageScreen() {
               <Text style={styles.label}>서버 IP 주소</Text>
               <TextInput
                 style={[styles.input, styles.readOnlyInput]}
-                value={currentUser.serverSettings.ip}
+                value={serverIp}
                 editable={false}
               />
             </View>
@@ -93,7 +109,7 @@ export default function MyPageScreen() {
               <Text style={styles.label}>포트 번호</Text>
               <TextInput
                 style={[styles.input, styles.readOnlyInput]}
-                value={currentUser.serverSettings.port}
+                value={serverPort}
                 editable={false}
               />
             </View>
