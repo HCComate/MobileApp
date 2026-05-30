@@ -6,12 +6,14 @@ import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { WORKER_IMAGES } from "../constants/workerImages";
 import { CURRENT_SERVER_URL, isServerMode } from "../mock/userData";
 import { MOCK_WORKERS } from "../mock/workers";
 
@@ -72,44 +74,56 @@ export default function ManagementScreen() {
     }
   };
 
-  const renderWorkerItem = ({ item }: { item: any }) => (
-    <View style={styles.workerItem}>
-      <View
-        style={[
-          styles.profileIconContainer,
-          { borderColor: getRoleColor(item.role), borderWidth: 2 },
-        ]}
-      >
-        <Ionicons
-          name="person-circle"
-          size={46}
-          color={getRoleColor(item.role)}
-        />
-      </View>
-      <View style={styles.workerInfo}>
-        <Text style={styles.workerName}>
-          {item.name}({item.id})
-        </Text>
-        <Text
-          style={{
-            fontSize: 12,
-            color: getRoleColor(item.role),
-            fontWeight: "bold",
-          }}
-        >
-          {item.role}
-        </Text>
-        <Text
+  const renderWorkerItem = ({ item, index }: { item: any; index: number }) => {
+    const imageSource = WORKER_IMAGES[index + 1];
+
+    return (
+      <View style={styles.workerItem}>
+        <View
           style={[
-            styles.workerStatus,
-            { color: item.status === "근무 중" ? "#3055C1" : "#A57373" },
+            styles.profileIconContainer,
+            {
+              borderColor: getRoleColor(item.role),
+              borderWidth: 2,
+              overflow: "hidden",
+            },
           ]}
         >
-          {item.status}
-        </Text>
+          {imageSource ? (
+            <Image source={imageSource} style={{ width: 46, height: 46 }} />
+          ) : (
+            <Ionicons
+              name="person-circle"
+              size={46}
+              color={getRoleColor(item.role)}
+            />
+          )}
+        </View>
+        <View style={styles.workerInfo}>
+          <Text style={styles.workerName}>
+            {item.name}({item.id})
+          </Text>
+          <Text
+            style={{
+              fontSize: 12,
+              color: getRoleColor(item.role),
+              fontWeight: "bold",
+            }}
+          >
+            {item.role}
+          </Text>
+          <Text
+            style={[
+              styles.workerStatus,
+              { color: item.status === "근무 중" ? "#3055C1" : "#A57373" },
+            ]}
+          >
+            {item.status}
+          </Text>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <>
