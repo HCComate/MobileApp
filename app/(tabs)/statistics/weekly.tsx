@@ -1,10 +1,12 @@
+import { ERROR_MASTER_DATA } from "@/assets/data/statesheet";
 import PageHeader from "@/components/PageHeader";
 import { Colors } from "@/constants/Colors";
 import apiClient from "@/services/apiClient";
-import { Stack } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { Stack, useFocusEffect } from "expo-router";
+import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
+  Dimensions,
   ScrollView,
   StyleSheet,
   Text,
@@ -13,6 +15,9 @@ import {
 } from "react-native";
 import { BarChart, LineChart, PieChart } from "react-native-gifted-charts";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const CHART_WIDTH = SCREEN_WIDTH - 80;
 
 interface WeeklyStatsResponse {
   target_week: string;
@@ -46,55 +51,12 @@ export default function WeeklyStatisticsScreen() {
       .finally(() => setLoading(false));
   };
 
-  // 타이머를 이용한 매일 정오(12:00) 자동 새로고침 스케줄러
-  useEffect(() => {
-    // 최초 1회(앱이 켜질 때) 데이터 호출
-    fetchStatistics();
-
-    let intervalId: any;
-    let timeoutId: any;
-
-    // 다음 정오(12:00)까지 남은 밀리초(ms) 계산 함수
-    const getMsUntilNextNoon = () => {
-      const now = new Date();
-      const nextNoon = new Date(now);
-
-      nextNoon.setHours(12, 0, 0, 0); // 오늘 낮 12시 정각 설정
-
-      // 이미 오늘의 정오가 지났다면 내일 낮 12시로 설정
-      if (now.getTime() >= nextNoon.getTime()) {
-        nextNoon.setDate(now.getDate() + 1);
-      }
-
-      return nextNoon.getTime() - now.getTime();
-    };
-
-    // 정오 주기를 제어하는 스케줄러 설정
-    const setupDailyScheduler = () => {
-      const msUntilNextNoon = getMsUntilNextNoon();
-
-      // 다가오는 첫 정오에 맞춰 실행되는 타이머
-      timeoutId = setTimeout(() => {
-        fetchStatistics(); // 첫 정오 정각에 데이터 갱신
-
-        // 첫 정오에 도달한 이후부터는 정확히 24시간(86,400,000ms)마다 주기적으로 호출
-        intervalId = setInterval(
-          () => {
-            fetchStatistics();
-          },
-          24 * 60 * 60 * 1000,
-        );
-      }, msUntilNextNoon);
-    };
-
-    setupDailyScheduler();
-
-    // 컴포넌트 언마운트 시 타이머 클리어 (메모리 누수 방지)
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId);
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, []);
+  // 화면에 포커스될 때마다 fetchStatistics 실행
+  useFocusEffect(
+    useCallback(() => {
+      fetchStatistics();
+    }, []),
+  );
 
   const toggleSection = (section: string) => {
     setExpanded((p) => ({ ...p, [section]: !p[section] }));
@@ -115,7 +77,7 @@ export default function WeeklyStatisticsScreen() {
   // 장비별 에러 발생 순위 데이터 변환
   const deviceErrorBarData = data.error_ranking_by_device.map((item) => ({
     value: item.error_count,
-    label: item.device_id.replace("RASP_PI_", ""),
+    label: item.device_id.replace("RASP_PI_", "#"),
   }));
   // 환경 데이터 이상치 데이터 변환
   const anomalyBarData = data.sensor_anomaly_by_day.map((item) => ({
@@ -155,8 +117,8 @@ export default function WeeklyStatisticsScreen() {
                 donut
                 showText
                 textColor="#FFF"
-                radius={85}
-                innerRadius={55}
+                radius={70}
+                innerRadius={40}
               />
             </View>
           )}
@@ -175,6 +137,7 @@ export default function WeeklyStatisticsScreen() {
             <View style={styles.chartHolder}>
               <LineChart
                 data={weeklyErrorLineData}
+                width={CHART_WIDTH}
                 color={Colors.light.brandDark}
                 thickness={3}
               />
@@ -195,6 +158,7 @@ export default function WeeklyStatisticsScreen() {
             <View style={styles.chartHolder}>
               <BarChart
                 data={deviceErrorBarData}
+                width={CHART_WIDTH}
                 barWidth={20}
                 frontColor={Colors.light.brandDark}
               />
@@ -215,7 +179,11 @@ export default function WeeklyStatisticsScreen() {
           </TouchableOpacity>
           {expanded.ANOMALY && (
             <View style={styles.chartHolder}>
-              <BarChart data={anomalyBarData} barWidth={20} />
+              <BarChart
+                data={anomalyBarData}
+                width={CHART_WIDTH}
+                barWidth={20}
+              />
             </View>
           )}
         </View>
@@ -231,12 +199,22 @@ export default function WeeklyStatisticsScreen() {
           </TouchableOpacity>
           {expanded.TOP5 && (
             <View style={styles.infoReportCard}>
-              {data.top5_error_codes.map((item, idx) => (
-                <View key={idx} style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>{item.code}</Text>
-                  <Text style={styles.infoValue}>{item.count}건</Text>
-                </View>
-              ))}
+              {data.top5_error_codes.map((item, idx) => {
+                const errorInfo = ERROR_MASTER_DATA.find(
+                  (e) => e.코드 === item.code,
+                );
+                return (
+                  <View key={idx} style={styles.infoRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.infoLabel}>{item.code}</Text>
+                      <Text style={styles.subInfoLabel}>
+                        {errorInfo ? errorInfo.오류명 : "알 수 없는 에러"}
+                      </Text>
+                    </View>
+                    <Text style={styles.infoValue}>{item.count}건</Text>
+                  </View>
+                );
+              })}
             </View>
           )}
         </View>
@@ -274,10 +252,12 @@ const styles = StyleSheet.create({
   infoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: 8,
     borderBottomWidth: 0.5,
     borderBottomColor: "#E1E4E8",
   },
-  infoLabel: { fontSize: 13, color: "#4A4A6A" },
+  infoLabel: { fontSize: 13, fontWeight: "700", color: "#2F3542" },
+  subInfoLabel: { fontSize: 12, color: "#666", marginTop: 2 },
   infoValue: { fontSize: 13, fontWeight: "600" },
 });

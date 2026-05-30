@@ -1,8 +1,8 @@
 import PageHeader from "@/components/PageHeader";
 import { Colors } from "@/constants/Colors";
 import apiClient from "@/services/apiClient";
-import { Stack } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { Stack, useFocusEffect } from "expo-router"; // useFocusEffect 추가
+import React, { useCallback, useState } from "react"; // useCallback 추가
 import {
   ActivityIndicator,
   ScrollView,
@@ -44,7 +44,6 @@ export default function YearlyStatisticsScreen() {
 
   const fetchStatistics = () => {
     const currentYear = new Date().getFullYear().toString();
-
     apiClient
       .get(`/api/stats/yearly?year=${currentYear}`)
       .then((res) => setData(res.data))
@@ -52,59 +51,12 @@ export default function YearlyStatisticsScreen() {
       .finally(() => setLoading(false));
   };
 
-  // 타이머를 이용한 매년 1월 1일 정오 자동 새로고침 스케줄러
-  useEffect(() => {
-    // 최초 1회(앱이 켜질 때) 데이터 호출
-    fetchStatistics();
-
-    let timeoutId: any;
-    let intervalId: any;
-
-    // 다음해 1월 1일 정오(12:00)까지 남은 밀리초(ms) 계산 함수
-    const getMsUntilNextYearFirstNoon = () => {
-      const now = new Date();
-      const nextYearFirstNoon = new Date(
-        now.getFullYear() + 1,
-        0,
-        1,
-        12,
-        0,
-        0,
-        0,
-      );
-
-      return nextYearFirstNoon.getTime() - now.getTime();
-    };
-
-    // 1년 주기를 이어가기 위한 연속 스케줄러 실행 함수
-    const startYearlyInterval = () => {
-      intervalId = setInterval(
-        () => {
-          fetchStatistics();
-        },
-        365 * 24 * 60 * 60 * 1000,
-      ); // 1년 단위 배치 갱신 설정
-    };
-
-    // 연간 스케줄러 감시 장치 구현
-    const setupYearlyScheduler = () => {
-      const msUntilNextYearFirstNoon = getMsUntilNextYearFirstNoon();
-
-      // 다가오는 새해 1월 1일 정오 정각에 맞춰 데이터 리프레시 요청
-      timeoutId = setTimeout(() => {
-        fetchStatistics();
-        startYearlyInterval(); // 첫 새해 도달 이후부터는 매년 주기 작동
-      }, msUntilNextYearFirstNoon);
-    };
-
-    setupYearlyScheduler();
-
-    // 컴포넌트 언마운트 시 메모리 누수 방지를 위한 타이머 해제
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId);
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, []);
+  // 페이지에 다시 들어올 때마다(Focus 될 때마다) 데이터를 다시 불러오도록 useFocusEffect 사용
+  useFocusEffect(
+    useCallback(() => {
+      fetchStatistics();
+    }, []),
+  );
 
   const toggleSection = (section: string) => {
     setExpanded((p) => ({ ...p, [section]: !p[section] }));
@@ -162,7 +114,7 @@ export default function YearlyStatisticsScreen() {
             <Text style={styles.cardHeaderTitle}>
               심각도 기반 리스크 종합 점수
             </Text>
-            <Text style={styles.arrowWhite}>{expanded.RISK ? "▲" : "▼"}</Text>
+            <Text style={styles.arrow}>{expanded.RISK ? "▲" : "▼"}</Text>
           </TouchableOpacity>
           {expanded.RISK && (
             <View style={styles.riskCardContent}>
@@ -173,108 +125,74 @@ export default function YearlyStatisticsScreen() {
           )}
         </View>
 
-        {/* 분기별 에러 발생 추이 */}
-        <View style={styles.section}>
-          {/* 💡 오타 수정: on think 대신 onPress 속성으로 원복 완료 */}
-          <TouchableOpacity
-            style={styles.sectionHeader}
-            onPress={() => toggleSection("QUARTER")}
-          >
-            <Text style={styles.sectionTitle}>
-              분기 기준 에러 발생 추이 비교
-            </Text>
-            <Text style={styles.arrow}>{expanded.QUARTER ? "▲" : "▼"}</Text>
-          </TouchableOpacity>
-          {expanded.QUARTER && (
-            <View style={styles.chartHolder}>
-              <BarChart
-                data={quarterData}
-                barWidth={35}
-                frontColor={Colors.light.brandDark}
-              />
-            </View>
-          )}
-        </View>
-
-        {/* 연간 상태 분포 */}
-        <View style={styles.section}>
-          <TouchableOpacity
-            style={styles.sectionHeader}
-            onPress={() => toggleSection("STATUS")}
-          >
-            <Text style={styles.sectionTitle}>
-              연간 장비 종합 가동 상태 분포
-            </Text>
-            <Text style={styles.arrow}>{expanded.STATUS ? "▲" : "▼"}</Text>
-          </TouchableOpacity>
-          {expanded.STATUS && (
-            <View style={styles.chartHolder}>
-              <PieChart data={statusPieData} donut radius={80} />
-            </View>
-          )}
-        </View>
-
-        {/* 장기 에러 발생 트렌드 */}
-        <View style={styles.section}>
-          <TouchableOpacity
-            style={styles.sectionHeader}
-            onPress={() => toggleSection("TREND")}
-          >
-            <Text style={styles.sectionTitle}>
-              월별 장기 에러 발생 트렌드 변화
-            </Text>
-            <Text style={styles.arrow}>{expanded.TREND ? "▲" : "▼"}</Text>
-          </TouchableOpacity>
-          {expanded.TREND && (
-            <View style={styles.chartHolder}>
-              <LineChart
-                data={longTermErrorData}
-                color="#FF4757"
-                thickness={3}
-              />
-            </View>
-          )}
-        </View>
-
-        {/* 연간 비전 NG 추이 */}
-        <View style={styles.section}>
-          <TouchableOpacity
-            style={styles.sectionHeader}
-            onPress={() => toggleSection("VISION")}
-          >
-            <Text style={styles.sectionTitle}>
-              월별 비전 검사 불량(NG) 비율 변화 추이
-            </Text>
-            <Text style={styles.arrow}>{expanded.VISION ? "▲" : "▼"}</Text>
-          </TouchableOpacity>
-          {expanded.VISION && (
-            <View style={styles.chartHolder}>
-              <LineChart data={visionNgData} color="#FFA500" thickness={3} />
-            </View>
-          )}
-        </View>
-
-        {/* 연간 센서 안정성 분석 */}
-        <View style={styles.section}>
-          <TouchableOpacity
-            style={styles.sectionHeader}
-            onPress={() => toggleSection("STABILITY")}
-          >
-            <Text style={styles.sectionTitle}>
-              연간 센서 안정성 데이터 분석
-            </Text>
-            <Text style={styles.arrow}>{expanded.STABILITY ? "▲" : "▼"}</Text>
-          </TouchableOpacity>
-          {expanded.STABILITY && (
-            <View style={styles.chartHolder}>
-              <LineChart
-                data={sensorStabilityData}
-                color="#2ED573"
-                thickness={3}
-              />
-            </View>
-          )}
-        </View>
+        {/* 차트 섹션들 */}
+        {[
+          {
+            title: "분기 기준 에러 발생 추이 비교",
+            key: "QUARTER",
+            data: quarterData,
+            type: "bar",
+          },
+          {
+            title: "연간 장비 종합 가동 상태 분포",
+            key: "STATUS",
+            data: statusPieData,
+            type: "pie",
+          },
+          {
+            title: "월별 장기 에러 발생 트렌드 변화",
+            key: "TREND",
+            data: longTermErrorData,
+            type: "line",
+          },
+          {
+            title: "월별 비전 검사 불량(NG) 비율 변화 추이",
+            key: "VISION",
+            data: visionNgData,
+            type: "line",
+          },
+          {
+            title: "연간 센서 안정성 데이터 분석",
+            key: "STABILITY",
+            data: sensorStabilityData,
+            type: "line",
+          },
+        ].map((item, index) => (
+          <View style={styles.section} key={index}>
+            <TouchableOpacity
+              style={styles.sectionHeader}
+              onPress={() => toggleSection(item.key)}
+            >
+              <Text style={styles.sectionTitle}>{item.title}</Text>
+              <Text style={styles.arrow}>{expanded[item.key] ? "▲" : "▼"}</Text>
+            </TouchableOpacity>
+            {expanded[item.key] && (
+              <View style={styles.chartHolder}>
+                {item.type === "bar" && (
+                  <BarChart
+                    data={item.data}
+                    barWidth={35}
+                    frontColor={Colors.light.brandDark}
+                  />
+                )}
+                {item.type === "pie" && (
+                  <PieChart
+                    data={item.data}
+                    donut
+                    radius={80}
+                    showText={true}
+                    textColor="white"
+                    labelsPosition="mid"
+                    showTextBackground={false}
+                  />
+                )}
+                {item.type === "line" && (
+                  <LineChart data={item.data} thickness={3} />
+                )}
+              </View>
+            )}
+          </View>
+        ))}
       </ScrollView>
     </SafeAreaView>
   );
@@ -286,21 +204,25 @@ const styles = StyleSheet.create({
   content: { padding: 16 },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   cardSection: {
-    backgroundColor: "#1E3A8A",
+    backgroundColor: "#FFFFFF",
     borderRadius: 14,
     padding: 16,
     marginBottom: 12,
-    elevation: 2,
+    elevation: 0,
+    borderWidth: 1,
+    borderColor: "#E1E4E8",
   },
-  cardHeaderTitle: { fontSize: 13, fontWeight: "700", color: "#FFF" },
-  riskCardContent: { alignItems: "center", marginTop: 15 },
-  riskValue: { color: "#FFF", fontSize: 24, fontWeight: "bold" },
+  cardHeaderTitle: { fontSize: 13, fontWeight: "700", color: "#2F3542" },
+  riskCardContent: { alignItems: "center", marginTop: 10 },
+  riskValue: { color: "#2F3542", fontSize: 24, fontWeight: "bold" },
   section: {
     backgroundColor: "#FFFFFF",
     borderRadius: 14,
     padding: 16,
     marginBottom: 12,
-    elevation: 2,
+    elevation: 0,
+    borderWidth: 1,
+    borderColor: "#E1E4E8",
   },
   sectionHeader: {
     flexDirection: "row",
@@ -309,6 +231,5 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { fontSize: 13, fontWeight: "700", color: "#2F3542" },
   arrow: { fontSize: 12, color: "#A4B0BE" },
-  arrowWhite: { fontSize: 12, color: "#FFF", opacity: 0.7 },
   chartHolder: { alignItems: "center", marginTop: 15 },
 });

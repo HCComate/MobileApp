@@ -1,9 +1,10 @@
 import PageHeader from "@/components/PageHeader";
 import apiClient from "@/services/apiClient";
-import { Stack } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { Stack, useFocusEffect } from "expo-router"; // 1. useFocusEffect 추가
+import React, { useCallback, useEffect, useState } from "react"; // 2. useCallback 추가
 import {
   ActivityIndicator,
+  Dimensions,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -13,6 +14,8 @@ import {
 } from "react-native";
 import { BarChart, LineChart, PieChart } from "react-native-gifted-charts";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 interface DailyStatsResponse {
   target_date: string;
@@ -50,8 +53,8 @@ export default function DailyStatisticsScreen() {
     SUMMARY: true,
     SENSOR: true,
     TREND: true,
-    SEVERITY: false,
-    DEVICE: false,
+    SEVERITY: true,
+    DEVICE: true,
   });
 
   const fetchStatistics = async () => {
@@ -71,11 +74,15 @@ export default function DailyStatisticsScreen() {
     }
   };
 
+  // 페이지에 다시 들어올 때마다(Focus 될 때마다) 데이터를 다시 불러오도록 설정
+  useFocusEffect(
+    useCallback(() => {
+      fetchStatistics();
+    }, []),
+  );
+
   // 타이머를 이용한 매 정각 자동 새로고침 스케줄러
   useEffect(() => {
-    // 최초 1회 데이터 호출
-    fetchStatistics();
-
     // React Native 환경에 맞게 any 타입으로 변수 선언 (형식 할당 에러 해결)
     let intervalId: any;
 
@@ -183,22 +190,27 @@ export default function DailyStatisticsScreen() {
         <TouchableOpacity
           style={styles.sectionHeader}
           onPress={() => toggleSection("SUMMARY")}
-        >
-          <Text style={styles.sectionTitle}>일일 주요 핵심 지표 요약</Text>
-          <Text style={styles.arrow}>{expanded.SUMMARY ? "▲" : "▼"}</Text>
-        </TouchableOpacity>
+        ></TouchableOpacity>
 
         {expanded.SUMMARY && (
           <View style={styles.cardRow}>
             <View style={styles.miniCard}>
               <Text style={styles.statLabel}>일일 에러 발생 빈도</Text>
-              <Text style={[styles.statValue, { color: "#FF4757" }]}>
+              <Text
+                style={[styles.statValue, { color: "#FF4757" }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
                 {data.daily_error_count}건
               </Text>
             </View>
             <View style={styles.miniCard}>
               <Text style={styles.statLabel}>일일 비전 NG 비율</Text>
-              <Text style={[styles.statValue, { color: "#FFA500" }]}>
+              <Text
+                style={[styles.statValue, { color: "#FFA500" }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
                 {data.daily_vision_ng_rate}%
               </Text>
             </View>
@@ -250,6 +262,7 @@ export default function DailyStatisticsScreen() {
                 data={lineRun}
                 data2={lineErr}
                 data3={lineIdle}
+                width={SCREEN_WIDTH - 100}
                 color1="#2ED573"
                 color2="#FF4757"
                 color3="#FFA500"
@@ -275,10 +288,13 @@ export default function DailyStatisticsScreen() {
               <PieChart
                 data={severityPieData}
                 donut
-                showText
+                showText={true}
                 textColor="#FFF"
-                radius={85}
-                innerRadius={55}
+                radius={70}
+                innerRadius={40}
+                textSize={9}
+                labelsPosition="mid"
+                showTextBackground={false}
               />
             </View>
           )}
@@ -297,6 +313,7 @@ export default function DailyStatisticsScreen() {
             <View style={styles.chartHolder}>
               <BarChart
                 data={deviceLogBarData}
+                width={SCREEN_WIDTH - 100}
                 barWidth={24}
                 noOfSections={4}
                 barBorderRadius={4}
@@ -310,7 +327,7 @@ export default function DailyStatisticsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8F9FA" },
+  container: { flex: 1, backgroundColor: "#FFF" },
   scrollView: { flex: 1 },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   cardRow: { flexDirection: "row", paddingHorizontal: 8, marginBottom: 12 },
@@ -320,7 +337,8 @@ const styles = StyleSheet.create({
     margin: 8,
     padding: 16,
     borderRadius: 12,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: "#E1E4E8",
   },
   section: {
     backgroundColor: "#FFFFFF",
@@ -328,19 +346,21 @@ const styles = StyleSheet.create({
     padding: 16,
     marginHorizontal: 16,
     marginBottom: 12,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: "#E1E4E8",
   },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
   },
   sectionTitle: { fontSize: 14, fontWeight: "700", color: "#2F3542" },
   arrow: { fontSize: 12, color: "#A4B0BE" },
   statLabel: { fontSize: 11, color: "#888", marginBottom: 5 },
   statValue: { fontSize: 20, fontWeight: "bold" },
-  sensorGrid: { gap: 8, marginTop: 15 },
+  sensorGrid: { gap: 8, marginTop: 15, paddingHorizontal: 8 },
   sensorText: { fontSize: 13, color: "#4A4A6A", fontWeight: "500" },
   chartHolder: { marginTop: 15, alignItems: "center" },
   chartCenter: {
