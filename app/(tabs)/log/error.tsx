@@ -12,7 +12,9 @@ import { PageStyles } from "../../../styles/PageStyles";
 export default function ErrorLogScreen() {
   const logs = useLogData();
   // 오직 machine_status가 ERROR인 데이터만 필터링
-  const errorLogs = logs.filter((item) => item.body.machine_status === "ERROR");
+  const errorLogs = logs.filter(
+    (item) => item.body.machine_status === "ERROR" || item.body.machine_status === "LOCKED",
+  );
 
   const renderLogItem = ({ item }: { item: RawLog }) => {
     const info = item.body.status_info[0];

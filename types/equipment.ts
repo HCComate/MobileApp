@@ -1,6 +1,6 @@
 // types/equipment.ts
 
-export type MachineStatus = "IDLE" | "RUN" | "ERROR" | "STOP";
+export type MachineStatus = "IDLE" | "RUN" | "ERROR" | "STOP" | "STANDBY" | "LOCKED";
 export type VisionStatus = "OK" | "NG"; // 명칭 분리하여 충돌 방지
 export type Severity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 export type Direction =

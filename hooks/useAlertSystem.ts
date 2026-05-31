@@ -1,8 +1,8 @@
 import * as Notifications from "expo-notifications";
 import { useEffect, useRef } from "react";
 import { Platform } from "react-native";
-import { MOCK_WORKERS } from "../mock/workers";
 import { handleAlertEvent } from "../services/alertManager";
+import { getCachedUsers } from "../services/logListener";
 import { AlertEvent } from "../types/alert";
 import { useLogData } from "./updateData";
 
@@ -70,7 +70,7 @@ export function useAlertSystem() {
 
       if (newLogs.length > 0) {
         [...newLogs].reverse().forEach((log) => {
-          if (log.body?.machine_status === "ERROR") {
+          if (log.body?.machine_status === "ERROR" || log.body?.machine_status === "LOCKED") {
             const severity = (log.body?.status_info?.[0]?.severity ||
               "HIGH") as any;
 
@@ -88,7 +88,7 @@ export function useAlertSystem() {
               "[AlertSystem] 에러 알람 트리거: ",
               log.header?.device_id,
             );
-            handleAlertEvent(alertEvent, MOCK_WORKERS as any);
+            handleAlertEvent(alertEvent, getCachedUsers());
           }
         });
 

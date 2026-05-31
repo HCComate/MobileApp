@@ -19,13 +19,14 @@ import {
   setCurrentLoginId,
   updateServerSettings,
 } from "../mock/userData";
+import { setCurrentUserId } from "../services/alertManager";
 
 export default function LoginScreen() {
   const router = useRouter();
   const [id, setId] = useState("");
   const [password, setPassword] = useState("");
   const [serverIp, setServerIp] = useState("localhost");
-  const [serverPort, setServerPort] = useState("5000");
+  const [serverPort, setServerPort] = useState("8080");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async () => {
@@ -48,14 +49,14 @@ export default function LoginScreen() {
     try {
       const baseUrl = `http://${trimmedIp}:${trimmedPort}`;
       const response = await axios.post(`${baseUrl}/api/auth/login`, {
-        userId: trimmedId,
+        username: trimmedId,
         password: trimmedPassword,
       });
 
-      const loginData = response.data;
+      const loginData = response.data?.data ?? response.data;
       const token = loginData.token;
-      const userId = loginData.user?.username || loginData.userId;
-      const name = loginData.user?.nickname || loginData.name || userId;
+      const userId = loginData.user?.username ?? trimmedId;
+      const name = loginData.user?.username || trimmedId;
 
       if (token) {
         await AsyncStorage.setItem("userToken", token);
@@ -63,6 +64,7 @@ export default function LoginScreen() {
         await AsyncStorage.setItem("serverPort", trimmedPort);
         updateServerSettings(trimmedIp, trimmedPort, true);
         setCurrentLoginId(userId);
+        setCurrentUserId(userId);
         Alert.alert("로그인 성공", `${name}님, 환영합니다!`);
         router.replace("/(tabs)");
       } else {
@@ -82,6 +84,7 @@ export default function LoginScreen() {
         );
         if (matchedUser && matchedUser.password === trimmedPassword) {
           setCurrentLoginId(trimmedId);
+          setCurrentUserId(matchedUser.id);
           Alert.alert(
             "목업 로그인",
             `서버 연결 실패로 목업 모드로 로그인합니다.\n담당자: ${matchedUser.name}`,

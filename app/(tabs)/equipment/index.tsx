@@ -9,7 +9,6 @@ import {
   Text,
   TouchableOpacity,
   View,
-  ViewToken,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -23,8 +22,7 @@ import { deviceStore } from "../../../store/deviceStore";
 import { DeviceSummary } from "../../../types/equipment";
 
 const { width: SW } = Dimensions.get("window");
-const GRID_PAGE_SIZE = 16;
-const VIRTUAL_BUFFER = 4;
+const LIST_PAGE_SIZE = 5; // 리스트 모드용 페이지 사이즈 (5개씩)
 
 type ViewMode = "list" | "grid";
 
@@ -36,9 +34,7 @@ export default function EquipmentStatsScreen() {
   // 통합 훅 사용 (USE_API 플래그에 따라 목업/API 자동 전환)
   const devices = useDeviceData();
 
-  const activeWindowRef = useRef<Set<string>>(new Set());
   const listRef = useRef<FlatList<DeviceSummary> | null>(null);
-  const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 30 });
 
   // 스토어 동기화 유지
   useEffect(() => {
@@ -47,34 +43,20 @@ export default function EquipmentStatsScreen() {
     }
   }, [devices]);
 
-  const devicesRef = useRef(devices);
-  useEffect(() => {
-    devicesRef.current = devices;
-  }, [devices]);
-
-  const onViewableItemsChanged = useCallback(
-    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
-      if (!viewableItems.length) return;
-      const indices = viewableItems.map((v) => v.index ?? 0);
-      const min = Math.max(0, Math.min(...indices) - VIRTUAL_BUFFER);
-      const max = Math.min(
-        devicesRef.current.length - 1,
-        Math.max(...indices) + VIRTUAL_BUFFER,
-      );
-      const next = new Set<string>();
-      for (let i = min; i <= max; i++) {
-        if (devicesRef.current[i]) next.add(devicesRef.current[i].deviceId);
-      }
-      activeWindowRef.current = next;
-    },
-    [],
+  // 리스트 모드 페이지네이션 계산
+  const totalPages = Math.max(1, Math.ceil(devices.length / LIST_PAGE_SIZE));
+  const pagedListDevices = devices.slice(
+    currentPage * LIST_PAGE_SIZE,
+    (currentPage + 1) * LIST_PAGE_SIZE,
   );
 
-  const totalPages = Math.max(1, Math.ceil(devices.length / GRID_PAGE_SIZE));
-  const pageDevices = devices.slice(
-    currentPage * GRID_PAGE_SIZE,
-    (currentPage + 1) * GRID_PAGE_SIZE,
-  );
+  // 페이지 번호 리스트 (최대 3개)
+  const getPageNumbers = () => {
+    let start = Math.max(0, currentPage - 1);
+    if (start > totalPages - 3) start = Math.max(0, totalPages - 3);
+    const end = Math.min(totalPages, start + 3);
+    return Array.from({ length: end - start }, (_, i) => start + i);
+  };
 
   const goToDetail = useCallback(
     (deviceId: string) => {
@@ -195,7 +177,7 @@ export default function EquipmentStatsScreen() {
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <Text style={styles.backBtnText}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>장비 통계</Text>
+        <Text style={styles.headerTitle}>장비 모니터링</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -216,7 +198,10 @@ export default function EquipmentStatsScreen() {
               styles.toggleBtn,
               viewMode === "list" && styles.toggleBtnOn,
             ]}
-            onPress={() => setViewMode("list")}
+            onPress={() => {
+              setViewMode("list");
+              setCurrentPage(0);
+            }}
           >
             <Text
               style={[
@@ -248,30 +233,18 @@ export default function EquipmentStatsScreen() {
 
       <View style={styles.countBar}>
         <Text style={styles.countText}>전체 {devices.length}개 장비</Text>
-        {viewMode === "grid" && (
-          <Text style={styles.countText}>
-            {currentPage + 1} / {totalPages} 페이지
-          </Text>
-        )}
       </View>
 
       {viewMode === "list" ? (
-        <FlatList
-          ref={listRef}
-          data={devices}
-          renderItem={renderListItem}
-          keyExtractor={(item) => item.deviceId}
-          contentContainerStyle={styles.listContent}
-          onViewableItemsChanged={onViewableItemsChanged}
-          viewabilityConfig={viewabilityConfig.current}
-          removeClippedSubviews
-          showsVerticalScrollIndicator={false}
-        />
-      ) : (
-        <View style={styles.gridContainer}>
-          <View style={styles.gridWrapper}>
-            {pageDevices.map((d) => renderGridItem(d))}
-          </View>
+        <View style={{ flex: 1 }}>
+          <FlatList
+            ref={listRef}
+            data={pagedListDevices}
+            renderItem={renderListItem}
+            keyExtractor={(item) => item.deviceId}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+          />
           <View style={styles.pagination}>
             <TouchableOpacity
               style={[styles.pageBtn, currentPage === 0 && styles.pageBtnOff]}
@@ -280,19 +253,27 @@ export default function EquipmentStatsScreen() {
             >
               <Text style={styles.pageBtnText}>‹ 이전</Text>
             </TouchableOpacity>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.dotRow}
-            >
-              {Array.from({ length: totalPages }, (_, i) => (
+            <View style={styles.numberRow}>
+              {getPageNumbers().map((i) => (
                 <TouchableOpacity
                   key={i}
-                  style={[styles.dot, i === currentPage && styles.dotOn]}
+                  style={[
+                    styles.numberBtn,
+                    i === currentPage && styles.numberBtnOn,
+                  ]}
                   onPress={() => setCurrentPage(i)}
-                />
+                >
+                  <Text
+                    style={[
+                      styles.numberText,
+                      i === currentPage && styles.numberTextOn,
+                    ]}
+                  >
+                    {i + 1}
+                  </Text>
+                </TouchableOpacity>
               ))}
-            </ScrollView>
+            </View>
             <TouchableOpacity
               style={[
                 styles.pageBtn,
@@ -305,6 +286,12 @@ export default function EquipmentStatsScreen() {
             </TouchableOpacity>
           </View>
         </View>
+      ) : (
+        <ScrollView style={styles.gridContainer}>
+          <View style={styles.gridWrapper}>
+            {devices.map((d) => renderGridItem(d))}
+          </View>
+        </ScrollView>
       )}
     </SafeAreaView>
   );
@@ -474,9 +461,9 @@ const styles = StyleSheet.create({
   pagination: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 20,
-    paddingBottom: 20,
+    justifyContent: "center",
+    paddingVertical: 20,
+    gap: 10,
   },
   pageBtn: {
     paddingHorizontal: 12,
@@ -486,12 +473,16 @@ const styles = StyleSheet.create({
   },
   pageBtnOff: { backgroundColor: EQ_COLORS.borderMuted },
   pageBtnText: { color: EQ_COLORS.white, fontSize: 12, fontWeight: "600" },
-  dotRow: { alignItems: "center", gap: 8, paddingHorizontal: 10 },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: EQ_COLORS.borderMuted,
+  numberRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  numberBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#E2E8F0",
   },
-  dotOn: { backgroundColor: EQ_COLORS.headerBg, width: 12 },
+  numberBtnOn: { backgroundColor: EQ_COLORS.headerBg },
+  numberText: { fontSize: 12, color: "#64748B", fontWeight: "600" },
+  numberTextOn: { color: "#FFFFFF" },
 });

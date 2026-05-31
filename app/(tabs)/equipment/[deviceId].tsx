@@ -24,6 +24,7 @@ import {
   getActiveAlertByDeviceId,
   isCurrentUserAcceptor,
   resolveAlertByDeviceId,
+  subscribeAlertChanges,
 } from "../../../services/alertManager";
 import {
   DeviceDetail,
@@ -73,19 +74,24 @@ export default function DeviceDetailScreen() {
   }, [deviceId]);
 
   // 2. 알림 해결 버튼 권한 체크
-  useEffect(() => {
-    if (deviceId) {
-      const activeAlert = getActiveAlertByDeviceId(deviceId);
-      if (activeAlert && activeAlert.acceptedBy) {
-        const isAcceptor = isCurrentUserAcceptor(
-          activeAlert.alertEvent.alertId,
-        );
-        setShowResolveButton(isAcceptor);
-      } else {
-        setShowResolveButton(false);
-      }
+  const checkResolveButton = React.useCallback(() => {
+    if (!deviceId) return;
+    const activeAlert = getActiveAlertByDeviceId(deviceId);
+    if (activeAlert && activeAlert.acceptedBy) {
+      setShowResolveButton(isCurrentUserAcceptor(activeAlert.alertEvent.alertId));
+    } else {
+      setShowResolveButton(false);
     }
-  }, [logs, deviceId]);
+  }, [deviceId]);
+
+  useEffect(() => {
+    checkResolveButton();
+  }, [logs, checkResolveButton]);
+
+  useEffect(() => {
+    // 알람 수락 시 즉시 버튼 갱신
+    return subscribeAlertChanges(checkResolveButton);
+  }, [checkResolveButton]);
 
   // 3. 렌더링용 데이터 결정 (서버 데이터 우선, 없으면 로그 데이터에서 매핑)
   const detail: DeviceDetail | null = useMemo(() => {

@@ -171,7 +171,7 @@ export function setCurrentLoginId(id: string) {
 }
 
 // 현재 앱의 통신 모드 상태 관리 (기본값은 false = mock 모드)
-export let isServerMode = true;
+export let isServerMode = false;
 export let CURRENT_SERVER_URL = "http://localhost:5000";
 export const updateServerSettings = (
   ip: string,

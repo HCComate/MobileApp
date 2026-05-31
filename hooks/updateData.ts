@@ -97,7 +97,7 @@ export function useLogData(): RawLog[] {
     };
 
     fetchLogs();
-    const interval = setInterval(fetchLogs, 1000);
+    const interval = setInterval(fetchLogs, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -108,21 +108,17 @@ export function useDeviceData() {
   const logs = useLogData();
   const [devices, setDevices] = useState<DeviceSummary[]>([]);
 
+  // 서버/Mock 공통 데이터 갱신 함수 (5초마다 실행)
   useEffect(() => {
     const updateDevices = async () => {
-      // 1. 실제 서버 모드
+      // 서버 모드: /api/devices 직접 호출
       if (isServerMode) {
         try {
           const res = await apiClient.get<any>("/api/devices");
-
-          // AdminPC Server: 배열 직접 반환 [...] 또는 { data: [...] }
           const rawData = res.data?.data ?? res.data ?? [];
           if (Array.isArray(rawData) && rawData.length > 0) {
-            console.log(
-              `[useDeviceData] SERVER 기기 목록 수신 성공 (${rawData.length}건)`,
-            );
-
-            const mappedDevices: DeviceSummary[] = rawData.map((d: any) => ({
+            console.log(`[useDeviceData] SERVER 기기 목록 수신 성공 (${rawData.length}건)`);
+            setDevices(rawData.map((d: any) => ({
               deviceId: d.deviceId || d.device_id,
               modelName: d.modelName || d.model_name,
               machineStatus: (d.machineStatus || d.status) as MachineStatus,
@@ -130,9 +126,7 @@ export function useDeviceData() {
               visionResult: d.visionResult as VisionStatus,
               severity: d.severity as Severity,
               lastSequence: d.lastSequence || 0,
-            }));
-
-            setDevices(mappedDevices);
+            })));
             return;
           }
         } catch (e) {
@@ -140,14 +134,11 @@ export function useDeviceData() {
         }
       }
 
-      // 2. 가짜 데이터 처리 로직 (MOCK 모드이거나 서버 호출 실패 시)
+      // Mock/Fallback: logs 기반으로 장비 상태 계산
       console.log("[useDeviceData] MOCK/Fallback 데이터 로직 실행");
-      const mappedDevices: DeviceSummary[] = MOCK_DEVICES.map((device) => {
-        const deviceLogs = logs.filter(
-          (l) => l.header?.device_id === device.id,
-        );
-        const latestLog = deviceLogs[0];
-
+      const currentLogs = logs;
+      setDevices(MOCK_DEVICES.map((device) => {
+        const latestLog = currentLogs.find((l) => l.header?.device_id === device.id);
         let status: MachineStatus = "STOP";
         let timestamp = new Date().toISOString();
         let visionResult: VisionStatus = "OK";
@@ -156,42 +147,22 @@ export function useDeviceData() {
 
         if (latestLog) {
           const logTime = new Date(latestLog.body?.timestamp || 0).getTime();
-          const now = Date.now();
-          const currentLogStatus = (latestLog.body?.machine_status ||
-            "STOP") as MachineStatus;
-
-          if (
-            currentLogStatus !== "ERROR" &&
-            now - logTime > IDLE_THRESHOLD_MS
-          ) {
-            status = "IDLE";
-          } else {
-            status = currentLogStatus;
-          }
-
+          const currentLogStatus = (latestLog.body?.machine_status || "STOP") as MachineStatus;
+          status = (currentLogStatus !== "ERROR" && currentLogStatus !== "LOCKED" &&
+            Date.now() - logTime > IDLE_THRESHOLD_MS) ? "IDLE" : currentLogStatus;
           timestamp = latestLog.body?.timestamp || timestamp;
-          visionResult = latestLog.body?.vision_result
-            ?.result as unknown as VisionStatus;
-          severity = (latestLog.body?.status_info?.[0]?.severity ||
-            "LOW") as Severity;
+          visionResult = latestLog.body?.vision_result?.result as unknown as VisionStatus;
+          severity = (latestLog.body?.status_info?.[0]?.severity || "LOW") as Severity;
           lastSequence = latestLog.body?.sequence || 0;
         }
-
-        return {
-          deviceId: device.id,
-          modelName: device.name,
-          machineStatus: status,
-          timestamp: timestamp,
-          visionResult: visionResult,
-          severity: severity,
-          lastSequence: lastSequence,
-        };
-      });
-
-      setDevices(mappedDevices);
+        return { deviceId: device.id, modelName: device.name, machineStatus: status,
+          timestamp, visionResult, severity, lastSequence };
+      }));
     };
 
     updateDevices();
+    const interval = setInterval(updateDevices, 5000);
+    return () => clearInterval(interval);
   }, [logs]);
 
   return devices;

@@ -1,6 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import axios from "axios";
 import { Stack, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -12,8 +10,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { CURRENT_SERVER_URL, isServerMode } from "../mock/userData";
-import { MOCK_WORKERS } from "../mock/workers";
+import apiClient from "../services/apiClient";
 
 export default function ManagementScreen() {
   const router = useRouter();
@@ -21,39 +18,26 @@ export default function ManagementScreen() {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (!isServerMode) {
-      setWorkers(MOCK_WORKERS);
-    } else {
-      fetchServerWorkers();
-    }
+    fetchServerWorkers();
   }, []);
 
   const fetchServerWorkers = async () => {
     setIsLoading(true);
     try {
-      const token = await AsyncStorage.getItem("userToken");
-      const pureToken = token?.replace("Bearer ", "");
+      const response = await apiClient.get("/api/users");
 
-      const response = await axios.get(`${CURRENT_SERVER_URL}/api/users`, {
-        headers: {
-          Authorization: `Bearer ${pureToken}`,
-          "x-access-token": pureToken,
-        },
-      });
-
-      if (Array.isArray(response.data)) {
-        const mappedWorkers = response.data.map((user: any) => ({
-          id: user.emp_id?.toString() || "N/A",
-          name: user.nickname || "이름없음",
-          role: user.role || "UNKNOWN",
-          status: user.is_online ? "근무 중" : "대기 중",
-        }));
-        setWorkers(mappedWorkers);
-      } else {
-        setWorkers(MOCK_WORKERS);
-      }
+      // MobileServer: ApiResponse 래퍼 { success, data } 또는 배열 직접 반환
+      const raw = response.data?.data ?? response.data;
+      const list = Array.isArray(raw) ? raw : [];
+      const mappedWorkers = list.map((user: any) => ({
+        id: user.userId || "N/A",
+        name: user.name || "이름없음",
+        role: user.role || "UNKNOWN",
+        status: user.shiftStatus === "ON_DUTY" ? "근무 중" : "퇴근",
+      }));
+      setWorkers(mappedWorkers);
     } catch {
-      setWorkers(MOCK_WORKERS);
+      setWorkers([]);
     } finally {
       setIsLoading(false);
     }

@@ -40,7 +40,7 @@ export default function TabLayout() {
         console.log("[TabLayout] startForegroundService succeeded");
 
         // 4. 로그 리스너 시작
-        startLogListener();
+        await startLogListener();
       } catch (e) {
         console.warn("[TabLayout] Initialization failed", e);
       }

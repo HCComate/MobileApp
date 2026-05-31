@@ -7,8 +7,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { MOCK_WORKERS } from "../mock/workers";
 import { respondToAlert } from "../services/alertManager";
+import { getCachedUsers } from "../services/logListener";
 import { AlertModalData, alertModalStore } from "../store/alertModalStore";
 
 const SEVERITY_COLOR: Record<string, string> = {
@@ -41,7 +41,7 @@ export default function AlertModal() {
   const handleAccept = async () => {
     setLoading(true);
     try {
-      await respondToAlert(data.alertId, "ACCEPTED", MOCK_WORKERS as any);
+      await respondToAlert(data.alertId, "ACCEPTED", getCachedUsers());
       alertModalStore.hide(); // 스토어에서 다음 알람을 가져옴
     } catch (e) {
       console.warn("[AlertModal] 수락 처리 실패", e);
@@ -52,7 +52,7 @@ export default function AlertModal() {
   const handleReject = async () => {
     setLoading(true);
     try {
-      await respondToAlert(data.alertId, "REJECTED", MOCK_WORKERS as any);
+      await respondToAlert(data.alertId, "REJECTED", getCachedUsers());
       alertModalStore.hide(); // 스토어에서 다음 알람을 가져옴
     } catch (e) {
       console.warn("[AlertModal] 거절 처리 실패", e);

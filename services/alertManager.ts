@@ -40,9 +40,22 @@ export function setCurrentUserId(userId: string | undefined) {
 }
 
 const activeAlerts = new Map<string, ActiveAlert>();
-const alertHistory: ActiveAlert[] = []; // 알람 이력 저장용 배열
+const alertHistory: ActiveAlert[] = [];
 const escalationTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const policyCache = new Map<string, EscalationPolicy>();
+
+// 알람 상태 변경 구독
+type AlertChangeListener = () => void;
+const changeListeners = new Set<AlertChangeListener>();
+
+export function subscribeAlertChanges(listener: AlertChangeListener): () => void {
+  changeListeners.add(listener);
+  return () => changeListeners.delete(listener);
+}
+
+function notifyAlertChanges() {
+  changeListeners.forEach((fn) => fn());
+}
 
 // ════════════════════════════════════════════════
 //  오류 이벤트 수신 → 알람 시작
@@ -179,6 +192,7 @@ export async function respondToAlert(
         userId: currentUserId,
       });
       console.log(`[API Success] 알림 ${alertId} 수락 응답 전송 완료`);
+      notifyAlertChanges();
     } else {
       activeAlerts.set(alertId, active);
       await escalateAlert(alertId, "REJECTED", allUsers);
@@ -197,6 +211,7 @@ export async function respondToAlert(
       active.respondedBy = currentUserId;
       active.acceptedBy = currentUserId;
       activeAlerts.set(alertId, active);
+      notifyAlertChanges();
     } else {
       activeAlerts.set(alertId, active);
       await escalateAlert(alertId, "REJECTED", allUsers);

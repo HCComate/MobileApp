@@ -31,6 +31,7 @@ export default function EventLogScreen() {
     }
     if (
       item.body.machine_status === "ERROR" ||
+      item.body.machine_status === "LOCKED" ||
       info.severity === "CRITICAL" ||
       info.severity === "HIGH"
     ) {

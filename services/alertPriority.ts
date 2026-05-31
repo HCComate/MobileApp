@@ -32,7 +32,7 @@ const SEVERITY_TIMEOUT: Record<AlertSeverity, number> = {
   LOW: 120,
   MEDIUM: 60,
   HIGH: 30,
-  CRITICAL: 15,
+  CRITICAL: 20,
 };
 
 // ── 사용자 정렬 (작업 상태 기준) ─────────────────

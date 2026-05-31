@@ -28,7 +28,7 @@ export default function DeviceDetailLogScreen() {
     if (msg.includes("recovery") || msg.includes("success")) {
       return { backgroundColor: "#3055C1", textColor: "#FFFFFF" };
     }
-    if (item.body.machine_status === "ERROR") {
+    if (item.body.machine_status === "ERROR" || item.body.machine_status === "LOCKED") {
       return { backgroundColor: "#FF4D4D", textColor: "#FFFFFF" };
     }
     if (info.severity === "MEDIUM") {

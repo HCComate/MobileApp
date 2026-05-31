@@ -24,6 +24,7 @@ export default function AllLogScreen() {
     // 오류는 빨간색
     if (
       item.body.machine_status === "ERROR" ||
+      item.body.machine_status === "LOCKED" ||
       info.severity === "CRITICAL" ||
       info.severity === "HIGH"
     ) {
