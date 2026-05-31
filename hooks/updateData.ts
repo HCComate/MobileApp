@@ -86,9 +86,30 @@ export function useLogData(): RawLog[] {
               new Date(b.body.timestamp).getTime() -
               new Date(a.body.timestamp).getTime(),
           );
-          setLogs(sortedLogs);
+          
+          setLogs((prevLogs) => {
+            const map = new Map<string, RawLog>();
+            // 1. 기존 로그 저장
+            prevLogs.forEach(log => {
+                const key = `${log.header.device_id}_${log.body.timestamp}`;
+                map.set(key, log);
+            });
+            // 2. 새 로그로 덮어쓰기/추가
+            sortedLogs.forEach(log => {
+                const key = `${log.header.device_id}_${log.body.timestamp}`;
+                map.set(key, log);
+            });
+            
+            // 3. 다시 정렬 후 최대 1000개까지만 유지
+            const allLogs = Array.from(map.values()).sort(
+                (a, b) =>
+                  new Date(b.body.timestamp).getTime() -
+                  new Date(a.body.timestamp).getTime()
+            );
+            return allLogs.slice(0, 1000);
+          });
         } else {
-          setLogs([]);
+          // 서버 데이터가 아예 없는 경우 (빈 배열 반환 시)에는 아무것도 안 함 (기존 누적 유지)
         }
       } catch (e) {
         console.error("[useLogData] SERVER 데이터 로드 실패:", e);
@@ -122,17 +143,15 @@ export function useDeviceData() {
               `[useDeviceData] SERVER 기기 목록 수신 성공 (${rawData.length}건)`,
             );
 
-            const mappedDevices: DeviceSummary[] = rawData.map(
-              (d: any) => ({
-                deviceId: d.deviceId || d.device_id,
-                modelName: d.modelName || d.model_name,
-                machineStatus: (d.machineStatus || d.status) as MachineStatus,
-                timestamp: d.timestamp,
-                visionResult: d.visionResult as VisionStatus,
-                severity: d.severity as Severity,
-                lastSequence: d.lastSequence || 0,
-              }),
-            );
+            const mappedDevices: DeviceSummary[] = rawData.map((d: any) => ({
+              deviceId: d.deviceId || d.device_id,
+              modelName: d.modelName || d.model_name,
+              machineStatus: (d.machineStatus || d.status) as MachineStatus,
+              timestamp: d.timestamp,
+              visionResult: d.visionResult as VisionStatus,
+              severity: d.severity as Severity,
+              lastSequence: d.lastSequence || 0,
+            }));
 
             setDevices(mappedDevices);
             return;

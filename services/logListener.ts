@@ -1,17 +1,41 @@
-import { MOCK_WORKERS } from "../mock/workers";
-import { AlertEvent } from "../types/alert";
+import { getAssignedDevices } from "../mock/workers";
+import { AlertEvent, AlertUser } from "../types/alert";
 import { handleAlertEvent } from "./alertManager";
 import apiClient from "./apiClient";
 
 console.log("[logListener] module loaded");
 
 let pollInterval: ReturnType<typeof setInterval> | null = null;
+let userPollInterval: ReturnType<typeof setInterval> | null = null;
+let cachedUsers: AlertUser[] = [];
+
+async function fetchRealUsers() {
+  try {
+    const res = await apiClient.get("/api/users");
+    if (res.data && res.data.data) {
+      cachedUsers = res.data.data.map((u: any) => ({
+        userId: u.userId,
+        name: u.name,
+        role: u.role,
+        shiftStatus: u.shiftStatus,
+        workStatus: u.workStatus,
+        assignedDevices: getAssignedDevices(u.userId)
+      }));
+    }
+  } catch (e) {
+    console.warn("[logListener] 유저 목록 갱신 실패", e);
+  }
+}
 
 export function startLogListener() {
   stopLogListener();
 
-  // ⭐ 이 로그가 찍혀야 정상입니다!
   console.log("[logListener] startLogListener called (Server Polling Mode)");
+
+  // 초기 유저 로딩
+  fetchRealUsers();
+  // 10초마다 유저 갱신
+  userPollInterval = setInterval(fetchRealUsers, 10000);
 
   pollInterval = setInterval(async () => {
     try {
@@ -29,7 +53,9 @@ export function startLogListener() {
             severity: alert.severity || "MEDIUM",
             timestamp: alert.createdAt || new Date().toISOString(),
           };
-          handleAlertEvent(alertEvent, MOCK_WORKERS as any);
+          if (cachedUsers.length > 0) {
+            handleAlertEvent(alertEvent, cachedUsers);
+          }
         });
       }
     } catch (error) {
@@ -42,6 +68,10 @@ export function stopLogListener() {
   if (pollInterval) {
     clearInterval(pollInterval);
     pollInterval = null;
+  }
+  if (userPollInterval) {
+    clearInterval(userPollInterval);
+    userPollInterval = null;
   }
   console.log("[logListener] stopLogListener called");
 }

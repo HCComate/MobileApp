@@ -34,9 +34,14 @@ export const mapToDeviceDetail = (data: any): DeviceDetail => ({
   })),
   visionResult: {
     result: (data.visionResult?.result as VisionStatus) || "OK",
-    defectType: data.visionResult?.defectType || data.visionResult?.defect_type || "NONE",
+    defectType:
+      data.visionResult?.defectType || data.visionResult?.defect_type || "NONE",
     confidence: data.visionResult?.confidence || 0,
-    inspectionArea: data.visionResult?.inspectionArea || data.visionResult?.inspection_area || "ALL",
-    imageUrl: data.visionResult?.imageUrl || data.visionResult?.image_url || null,
+    inspectionArea:
+      data.visionResult?.inspectionArea ||
+      data.visionResult?.inspection_area ||
+      "ALL",
+    imageUrl:
+      data.visionResult?.imageUrl || data.visionResult?.image_url || null,
   },
 });

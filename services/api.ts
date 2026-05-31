@@ -1,10 +1,10 @@
-import axios from 'axios';
-import { CURRENT_SERVER_URL } from '@/mock/userData';
+import { CURRENT_SERVER_URL } from "@/mock/userData";
+import axios from "axios";
 
 const api = axios.create({
   baseURL: CURRENT_SERVER_URL,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 

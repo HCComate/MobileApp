@@ -59,6 +59,8 @@ export default function LoginScreen() {
 
       if (token) {
         await AsyncStorage.setItem("userToken", token);
+        await AsyncStorage.setItem("serverIp", trimmedIp);
+        await AsyncStorage.setItem("serverPort", trimmedPort);
         updateServerSettings(trimmedIp, trimmedPort, true);
         setCurrentLoginId(userId);
         Alert.alert("로그인 성공", `${name}님, 환영합니다!`);

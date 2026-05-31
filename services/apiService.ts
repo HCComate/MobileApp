@@ -13,7 +13,7 @@ const unwrap = <T>(responseData: any): T => {
 export async function fetchDeviceSummaries(): Promise<DeviceSummary[]> {
   try {
     const response = await apiClient.get<any>("/api/devices");
-    const data = unwrap<any[]>(response.data);  // ← 언랩 추가
+    const data = unwrap<any[]>(response.data); // ← 언랩 추가
     return data.map(mapToDeviceSummary);
   } catch (error) {
     console.error("[API Service] 장비 요약 정보 가져오기 실패:", error);
@@ -26,12 +26,15 @@ export async function fetchDeviceDetail(
 ): Promise<DeviceDetail> {
   try {
     const response = await apiClient.get<any>(
-      `/api/devices/${deviceId}/detail`,  // ← /detail 추가
+      `/api/devices/${deviceId}/detail`, // ← /detail 추가
     );
-    const data = unwrap<any>(response.data);  // ← 언랩 추가
+    const data = unwrap<any>(response.data); // ← 언랩 추가
     return mapToDeviceDetail(data);
   } catch (error) {
-    console.error(`[API Service] 장비 ${deviceId} 상세 정보 가져오기 실패:`, error);
+    console.error(
+      `[API Service] 장비 ${deviceId} 상세 정보 가져오기 실패:`,
+      error,
+    );
     throw error;
   }
 }
