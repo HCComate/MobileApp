@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   FlatList,
   RefreshControl,
+  StatusBar,
   StyleSheet,
   useColorScheme,
   View,
@@ -19,13 +20,7 @@ import { useEventData } from "../../hooks/usePlanData";
 
 export default function PlanScreen() {
   const colorScheme = useColorScheme() ?? "light";
-  const backgroundColor = Colors[colorScheme].background;
-  const isDark = colorScheme === "dark";
-
-  const cardBgColor = isDark ? "#1E1E1E" : "#FFF";
-  const cardBorderColor = isDark ? "#2C2C2C" : "#ECECEC";
-  const mainTextColor = isDark ? "#FFF" : "#333";
-  const subTextColor = isDark ? "#BBB" : "#888";
+  const theme = colorScheme;
 
   const initialDateString = useMemo(() => {
     const today = new Date();
@@ -60,18 +55,21 @@ export default function PlanScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor }]}>
+      <ThemedView style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#3055C1" />
-      </View>
+      </ThemedView>
     );
   }
 
   return (
     <SafeAreaView
-      style={[styles.safeArea, { backgroundColor }]}
+      style={[styles.safeArea, { backgroundColor: Colors[theme].background }]}
       edges={["top", "right", "left"]}
     >
       <Stack.Screen options={{ headerShown: false }} />
+      <StatusBar
+        barStyle={theme === "dark" ? "light-content" : "dark-content"}
+      />
       <Header />
 
       <View style={styles.bannerSection}>
@@ -106,29 +104,22 @@ export default function PlanScreen() {
           }
           renderItem={({ item }) => (
             <View style={styles.listContainer}>
-              <View
+              <ThemedView
                 style={[
                   styles.eventItem,
-                  {
-                    backgroundColor: cardBgColor,
-                    borderColor: cardBorderColor,
-                  },
+                  { borderColor: Colors[theme].border },
                 ]}
               >
                 <View style={styles.eventDot} />
                 <View style={styles.eventInfo}>
-                  <ThemedText
-                    style={[styles.eventContent, { color: mainTextColor }]}
-                  >
+                  <ThemedText style={styles.eventContent}>
                     {item.content}
                   </ThemedText>
-                  <ThemedText
-                    style={[styles.dateText, { color: subTextColor }]}
-                  >
+                  <ThemedText style={styles.dateText}>
                     {item.date.replace(/-/g, ".")}
                   </ThemedText>
                 </View>
-              </View>
+              </ThemedView>
             </View>
           )}
           ListEmptyComponent={
@@ -174,6 +165,6 @@ const styles = StyleSheet.create({
   },
   eventInfo: { flex: 1 },
   eventContent: { fontSize: 15, lineHeight: 22 },
-  dateText: { marginTop: 8, fontSize: 12 },
+  dateText: { marginTop: 8, fontSize: 12, opacity: 0.6 },
   emptyText: { textAlign: "center", marginTop: 30, opacity: 0.4 },
 });

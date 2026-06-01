@@ -1,4 +1,5 @@
-import Header from "@/components/Header";
+import PageHeader from "@/components/PageHeader";
+import { ThemedText } from "@/components/themed-text";
 import { Colors } from "@/constants/Colors";
 import { Fonts } from "@/constants/Fonts";
 import Constants from "expo-constants";
@@ -8,26 +9,27 @@ import {
   Dimensions,
   ScrollView,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
+  useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { height } = Dimensions.get("window");
 
 export default function StatisticsMainScreen() {
-  // 라우터 설정
   const router = useRouter();
-  // 앱 버전
+  const theme = useColorScheme() ?? "light";
+
   const appVersion = Constants.expoConfig?.version || "1.0.0";
-  // 현재 날짜와 시간
+
   const currentTime = new Date().toLocaleString("ko-KR", {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
+    hour12: false,
   });
 
   const STAT_MENUS = [
@@ -38,38 +40,50 @@ export default function StatisticsMainScreen() {
   ];
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "right", "left"]}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: Colors[theme].background }]}
+      edges={["top", "right", "left"]}
+    >
       <Stack.Screen options={{ headerShown: false }} />
-      <Header />
+
+      <PageHeader title="장비 검사 통계" showBack={true} />
 
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.contentContainer}
       >
-        <View style={styles.titleBanner}>
-          <Text style={styles.bannerText}>장비 검사 통계</Text>
-        </View>
-
         <View style={styles.menuGrid}>
           {STAT_MENUS.map((menu, index) => (
             <TouchableOpacity
               key={index}
-              style={styles.menuButton}
+              style={[
+                styles.menuButton,
+                {
+                  backgroundColor: theme === "dark" ? "#374151" : "#4A4A6A",
+                },
+              ]}
               onPress={() => router.push(menu.path)}
               activeOpacity={0.7}
             >
-              <Text style={[styles.arrowText, { opacity: 0 }]}>›</Text>
-              <Text style={styles.menuText}>{menu.title}</Text>
-              <Text style={styles.arrowText}>›</Text>
+              <ThemedText style={[styles.arrowText, { opacity: 0 }]}>
+                ›
+              </ThemedText>
+
+              <ThemedText style={styles.menuText}>{menu.title}</ThemedText>
+
+              <ThemedText style={styles.arrowText}>›</ThemedText>
             </TouchableOpacity>
           ))}
         </View>
 
         <View style={styles.footerInfo}>
-          <View style={styles.divider} />
-          <Text style={styles.versionText}>
+          <View
+            style={[styles.divider, { backgroundColor: Colors[theme].border }]}
+          />
+
+          <ThemedText style={styles.versionText}>
             VisionMate v{appVersion} - Last Updated: {currentTime}
-          </Text>
+          </ThemedText>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -79,29 +93,25 @@ export default function StatisticsMainScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Colors.light.background,
   },
-  container: { flex: 1 },
+
+  container: {
+    flex: 1,
+  },
+
   contentContainer: {
+    paddingTop: 30,
     paddingBottom: 40,
     minHeight: height * 0.8,
   },
-  titleBanner: {
-    backgroundColor: Colors.light.brandDark,
-    paddingVertical: 25,
-    alignItems: "center",
-    marginBottom: 20,
+
+  menuGrid: {
+    paddingHorizontal: 20,
+    gap: 25,
   },
-  bannerText: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: "#FFFFFF",
-    fontFamily: Fonts.sans,
-  },
-  menuGrid: { paddingHorizontal: 20, gap: 15 },
+
   menuButton: {
-    backgroundColor: "#4A4A6A",
-    paddingVertical: 22,
+    paddingVertical: 25,
     paddingHorizontal: 20,
     borderRadius: 12,
     flexDirection: "row",
@@ -109,7 +119,10 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     elevation: 4,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
@@ -135,12 +148,12 @@ const styles = StyleSheet.create({
   divider: {
     width: 40,
     height: 2,
-    backgroundColor: "#DDD",
     marginVertical: 15,
   },
   versionText: {
     fontSize: 12,
-    color: "#AAA",
+    textAlign: "center",
+    opacity: 0.6,
     fontFamily: Fonts.sans,
   },
 });

@@ -1,17 +1,21 @@
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
 import { Stack, useRouter } from "expo-router";
 import React, { useMemo } from "react";
 import {
   Dimensions,
   FlatList,
+  StatusBar,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
+  useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import DeviceIcon from "../../../components/DeviceIcon";
 import Header from "../../../components/Header";
 import PageHeader from "../../../components/PageHeader";
+import { Colors } from "../../../constants/Colors";
 import { generateMockSummaries } from "../../../mock/deviceMocks";
 import { PageStyles } from "../../../styles/PageStyles";
 import { DeviceSummary } from "../../../types/equipment";
@@ -22,6 +26,7 @@ const ITEM_SIZE = (width - 40) / COLUMN_COUNT;
 
 export default function DeviceLogScreen() {
   const router = useRouter();
+  const theme = useColorScheme() ?? "light";
 
   const devices = useMemo(() => generateMockSummaries(), []);
 
@@ -44,20 +49,29 @@ export default function DeviceLogScreen() {
         name={item.deviceId}
         size={ITEM_SIZE * 0.8}
       />
-      <Text style={styles.deviceLabel} numberOfLines={1}>
+      <ThemedText style={styles.deviceLabel} numberOfLines={1}>
         {item.deviceId.replace("RASP_PI_", "#")}
-      </Text>
+      </ThemedText>
     </TouchableOpacity>
   );
 
   return (
-    <SafeAreaView style={PageStyles.safeArea} edges={["top", "right", "left"]}>
+    <SafeAreaView
+      style={[
+        PageStyles.safeArea,
+        { backgroundColor: Colors[theme].background },
+      ]}
+      edges={["top", "right", "left"]}
+    >
       {/* 중복 헤더 방지 */}
       <Stack.Screen options={{ headerShown: false }} />
+      <StatusBar
+        barStyle={theme === "dark" ? "light-content" : "dark-content"}
+      />
 
       <Header />
 
-      <View style={PageStyles.container}>
+      <ThemedView style={PageStyles.container}>
         <PageHeader title="장비별 로그 보기" />
         <View style={{ marginBottom: 30 }} />
 
@@ -70,11 +84,13 @@ export default function DeviceLogScreen() {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Text style={PageStyles.emptyText}>연결된 장비가 없습니다.</Text>
+              <ThemedText style={PageStyles.emptyText}>
+                연결된 장비가 없습니다.
+              </ThemedText>
             </View>
           }
         />
-      </View>
+      </ThemedView>
     </SafeAreaView>
   );
 }
@@ -91,7 +107,6 @@ const styles = StyleSheet.create({
   },
   deviceLabel: {
     fontSize: 10,
-    color: "#64748B",
     marginTop: 4,
     fontWeight: "600",
   },

@@ -7,10 +7,12 @@ import {
   Modal,
   RefreshControl,
   ScrollView,
+  StatusBar,
   StyleSheet,
+  Text,
   TouchableOpacity,
-  useColorScheme,
   View,
+  useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -29,9 +31,9 @@ export default function NoticeScreen() {
   const backgroundColor = Colors[colorScheme].background;
 
   const isDark = colorScheme === "dark";
-  const cardBgColor = isDark ? "#1E1E1E" : "#FFF";
-  const cardBorderColor = isDark ? "#2C2C2C" : "#F0F0F0";
-  const mainTextColor = isDark ? "#FFF" : "#333";
+  const cardBgColor = Colors[colorScheme].background;
+  const cardBorderColor = Colors[colorScheme].border;
+  const mainTextColor = Colors[colorScheme].text;
   const subTextColor = isDark ? "#BBB" : "#666";
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -50,9 +52,7 @@ export default function NoticeScreen() {
       if (a.is_important !== b.is_important) {
         return b.is_important - a.is_important;
       }
-      return b.created_at.localeCompare(b.created_at)
-        ? b.created_at.localeCompare(a.created_at)
-        : 0;
+      return b.created_at.localeCompare(a.created_at);
     });
   }, [notices]);
 
@@ -103,7 +103,7 @@ export default function NoticeScreen() {
         <View style={styles.noticeHeader}>
           {item.is_important === 1 && (
             <View style={styles.importantBadge}>
-              <ThemedText style={styles.importantText}>중요</ThemedText>
+              <Text style={styles.importantText}>중요</Text>
             </View>
           )}
           <ThemedText style={styles.dateText}>{item.created_at}</ThemedText>
@@ -211,6 +211,7 @@ export default function NoticeScreen() {
       edges={["top", "right", "left"]}
     >
       <Stack.Screen options={{ headerShown: false }} />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       <Header />
 
       <ThemedView style={styles.container}>
@@ -256,7 +257,7 @@ export default function NoticeScreen() {
                 <View style={styles.noticeHeader}>
                   {selectedNotice.is_important === 1 && (
                     <View style={styles.importantBadge}>
-                      <ThemedText style={styles.importantText}>중요</ThemedText>
+                      <Text style={styles.importantText}>중요</Text>
                     </View>
                   )}
                   <ThemedText style={styles.dateText}>

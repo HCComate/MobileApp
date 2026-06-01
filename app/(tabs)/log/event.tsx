@@ -1,9 +1,12 @@
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
 import { Stack } from "expo-router";
 import React from "react";
-import { FlatList, Text, View } from "react-native";
+import { FlatList, StatusBar, View, useColorScheme } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "../../../components/Header";
 import PageHeader from "../../../components/PageHeader";
+import { Colors } from "../../../constants/Colors";
 import { useLogData } from "../../../hooks/updateData";
 import { RawLog } from "../../../mock/Logs";
 import { LogStyles } from "../../../styles/LogStyles";
@@ -11,6 +14,8 @@ import { PageStyles } from "../../../styles/PageStyles";
 
 export default function EventLogScreen() {
   const logs = useLogData();
+  const theme = useColorScheme() ?? "light";
+
   // 정상인 로그 아닌 것만 필터링
   const eventLogs = logs.filter(
     (item) =>
@@ -56,7 +61,7 @@ export default function EventLogScreen() {
       >
         <View style={LogStyles.deviceCell}>
           {/* 장비 ID 데이터 바인딩 */}
-          <Text
+          <ThemedText
             style={[
               LogStyles.cellText,
               {
@@ -66,11 +71,11 @@ export default function EventLogScreen() {
             ]}
           >
             {item.header.device_id}
-          </Text>
+          </ThemedText>
         </View>
 
         <View style={LogStyles.timeCell}>
-          <Text
+          <ThemedText
             style={[
               LogStyles.timeText,
               {
@@ -79,9 +84,9 @@ export default function EventLogScreen() {
             ]}
           >
             {date}
-          </Text>
+          </ThemedText>
 
-          <Text
+          <ThemedText
             style={[
               LogStyles.timeText,
               {
@@ -90,12 +95,12 @@ export default function EventLogScreen() {
             ]}
           >
             {time}
-          </Text>
+          </ThemedText>
         </View>
 
         <View style={LogStyles.msgCell}>
           {/* 상태 메시지 데이터 바인딩 */}
-          <Text
+          <ThemedText
             style={[
               LogStyles.cellText,
               {
@@ -105,25 +110,58 @@ export default function EventLogScreen() {
             ]}
           >
             {info.msg}
-          </Text>
+          </ThemedText>
         </View>
       </View>
     );
   };
 
   return (
-    <SafeAreaView style={PageStyles.safeArea} edges={["top", "right", "left"]}>
+    <SafeAreaView
+      style={[
+        PageStyles.safeArea,
+        { backgroundColor: Colors[theme].background },
+      ]}
+      edges={["top", "right", "left"]}
+    >
       <Stack.Screen options={{ headerShown: false }} />
+      <StatusBar
+        barStyle={theme === "dark" ? "light-content" : "dark-content"}
+      />
       <Header />
 
-      <View style={PageStyles.container}>
+      <ThemedView style={PageStyles.container}>
         <PageHeader title="이벤트 로그 보기" />
-        <View style={LogStyles.columnHeader}>
-          <Text style={[LogStyles.columnText, { flex: 0.8 }]}>장비</Text>
-          <Text style={[LogStyles.columnText, { flex: 1.2 }]}>일시</Text>
-          <Text style={[LogStyles.columnText, { flex: 2 }]}>
+        <View
+          style={[
+            LogStyles.columnHeader,
+            { backgroundColor: theme === "dark" ? "#374151" : "#E2E8F0" },
+          ]}
+        >
+          <ThemedText
+            style={[
+              LogStyles.columnText,
+              { flex: 0.8, color: Colors[theme].text },
+            ]}
+          >
+            장비
+          </ThemedText>
+          <ThemedText
+            style={[
+              LogStyles.columnText,
+              { flex: 1.2, color: Colors[theme].text },
+            ]}
+          >
+            일시
+          </ThemedText>
+          <ThemedText
+            style={[
+              LogStyles.columnText,
+              { flex: 2, color: Colors[theme].text },
+            ]}
+          >
             기기 상태 내역
-          </Text>
+          </ThemedText>
         </View>
         <FlatList
           data={eventLogs}
@@ -133,7 +171,7 @@ export default function EventLogScreen() {
           renderItem={renderLogItem}
           showsVerticalScrollIndicator={false}
         />
-      </View>
+      </ThemedView>
     </SafeAreaView>
   );
 }

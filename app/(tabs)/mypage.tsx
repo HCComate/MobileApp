@@ -1,4 +1,7 @@
 import Header from "@/components/Header";
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
+import { Colors } from "@/constants/Colors";
 import { CURRENT_LOGIN_ID, MOCK_USER_LIST } from "@/mock/userData";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -8,17 +11,19 @@ import React, { useEffect, useState } from "react";
 import {
   Alert,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Switch,
-  Text,
   TextInput,
   TouchableOpacity,
   View,
+  useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function MyPageScreen() {
   const router = useRouter();
+  const theme = useColorScheme() ?? "light";
 
   // 현재 로그인된 사용자 정보 로드
   const currentUser =
@@ -74,58 +79,80 @@ export default function MyPageScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "right", "left"]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: Colors[theme].background }]}
+      edges={["top", "right", "left"]}
+    >
+      <StatusBar
+        barStyle={theme === "dark" ? "light-content" : "dark-content"}
+      />
       <Header />
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* 사용자 정보 섹션 */}
-        <View style={styles.profileSection}>
+        <ThemedView style={styles.profileSection}>
           <View style={styles.avatarContainer}>
             <MaterialCommunityIcons name="account" size={60} color="#3055C1" />
           </View>
           <View style={styles.profileInfo}>
-            <Text style={styles.userName}>
+            <ThemedText style={styles.userName}>
               {currentUser.name} ({currentUser.id})
-            </Text>
-            <Text style={styles.userRole}>{currentUser.role}</Text>
-            <Text style={styles.expiryDate}>
+            </ThemedText>
+            <ThemedText style={styles.userRole}>{currentUser.role}</ThemedText>
+            <ThemedText style={styles.expiryDate}>
               만료일: {currentUser.expiryDate}
-            </Text>
+            </ThemedText>
           </View>
-        </View>
+        </ThemedView>
 
         {/* 서버 설정 섹션 */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>서버 설정</Text>
-          <View style={styles.card}>
+          <ThemedText style={styles.sectionTitle}>서버 설정</ThemedText>
+          <ThemedView
+            style={[styles.card, { borderColor: Colors[theme].border }]}
+          >
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>서버 IP 주소</Text>
+              <ThemedText style={styles.label}>서버 IP 주소</ThemedText>
               <TextInput
-                style={[styles.input, styles.readOnlyInput]}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: Colors[theme].background,
+                    color: Colors[theme].text,
+                  },
+                ]}
                 value={serverIp}
                 editable={false}
               />
             </View>
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>포트 번호</Text>
+              <ThemedText style={styles.label}>포트 번호</ThemedText>
               <TextInput
-                style={[styles.input, styles.readOnlyInput]}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: Colors[theme].background,
+                    color: Colors[theme].text,
+                  },
+                ]}
                 value={serverPort}
                 editable={false}
               />
             </View>
-          </View>
+          </ThemedView>
         </View>
 
         {/* 알림 설정 섹션 */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>알림 설정</Text>
-          <View style={styles.card}>
+          <ThemedText style={styles.sectionTitle}>알림 설정</ThemedText>
+          <ThemedView
+            style={[styles.card, { borderColor: Colors[theme].border }]}
+          >
             <View style={styles.settingRow}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.settingLabel}>푸시 알림</Text>
-                <Text style={styles.settingDesc}>
+                <ThemedText style={styles.settingLabel}>푸시 알림</ThemedText>
+                <ThemedText style={styles.settingDesc}>
                   장비 에러 발생 시 알림 수신
-                </Text>
+                </ThemedText>
               </View>
               <Switch
                 value={isPushEnabled}
@@ -135,11 +162,21 @@ export default function MyPageScreen() {
             </View>
             <View style={styles.settingRow}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.settingLabel}>갱신 주기 (ms)</Text>
-                <Text style={styles.settingDesc}>데이터 폴링 간격 설정</Text>
+                <ThemedText style={styles.settingLabel}>
+                  갱신 주기 (ms)
+                </ThemedText>
+                <ThemedText style={styles.settingDesc}>
+                  데이터 폴링 간격 설정
+                </ThemedText>
               </View>
               <TextInput
-                style={styles.smallInput}
+                style={[
+                  styles.smallInput,
+                  {
+                    backgroundColor: Colors[theme].background,
+                    color: Colors[theme].text,
+                  },
+                ]}
                 value={refreshInterval}
                 onChangeText={setRefreshInterval}
                 keyboardType="numeric"
@@ -149,15 +186,19 @@ export default function MyPageScreen() {
               style={styles.testButton}
               onPress={handleTestNotification}
             >
-              <Text style={styles.testButtonText}>테스트 알림 보내기</Text>
+              <ThemedText style={styles.testButtonText}>
+                테스트 알림 보내기
+              </ThemedText>
             </TouchableOpacity>
-          </View>
+          </ThemedView>
         </View>
 
         {/* 관리 메뉴 섹션 */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>관리 메뉴</Text>
-          <View style={styles.card}>
+          <ThemedText style={styles.sectionTitle}>관리 메뉴</ThemedText>
+          <ThemedView
+            style={[styles.card, { borderColor: Colors[theme].border }]}
+          >
             <TouchableOpacity
               style={styles.menuItem}
               onPress={() => router.push("/management")}
@@ -167,7 +208,7 @@ export default function MyPageScreen() {
                 size={24}
                 color="#3055C1"
               />
-              <Text style={styles.menuText}>작업자 관리</Text>
+              <ThemedText style={styles.menuText}>작업자 관리</ThemedText>
               <MaterialCommunityIcons
                 name="chevron-right"
                 size={24}
@@ -180,14 +221,14 @@ export default function MyPageScreen() {
                 size={24}
                 color="#3055C1"
               />
-              <Text style={styles.menuText}>전체 알람 이력</Text>
+              <ThemedText style={styles.menuText}>전체 알람 이력</ThemedText>
               <MaterialCommunityIcons
                 name="chevron-right"
                 size={24}
                 color="#CBD5E1"
               />
             </TouchableOpacity>
-          </View>
+          </ThemedView>
         </View>
 
         {/* 하단 버튼 그룹 */}
@@ -196,15 +237,17 @@ export default function MyPageScreen() {
             style={styles.saveButton}
             onPress={handleSaveSettings}
           >
-            <Text style={styles.saveButtonText}>설정 저장</Text>
+            <ThemedText style={styles.saveButtonText}>설정 저장</ThemedText>
           </TouchableOpacity>
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Text style={styles.logoutButtonText}>로그아웃</Text>
+            <ThemedText style={styles.logoutButtonText}>로그아웃</ThemedText>
           </TouchableOpacity>
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.versionText}>버전 1.0.2 (Build 20260520)</Text>
+          <ThemedText style={styles.versionText}>
+            버전 1.0.2 (Build 20260520)
+          </ThemedText>
         </View>
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -213,21 +256,14 @@ export default function MyPageScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F8F9FA",
-  },
-  content: {
-    flex: 1,
-  },
+  container: { flex: 1 },
+  content: { flex: 1 },
   profileSection: {
     flexDirection: "row",
     alignItems: "center",
     padding: 20,
-    backgroundColor: "#FFF",
     marginBottom: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
   },
   avatarContainer: {
     width: 80,
@@ -238,64 +274,31 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: 20,
   },
-  profileInfo: {
-    flex: 1,
-  },
-  userName: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#1E293B",
-    marginBottom: 4,
-  },
+  profileInfo: { flex: 1 },
+  userName: { fontSize: 18, fontWeight: "bold", marginBottom: 4 },
   userRole: {
     fontSize: 14,
     color: "#3055C1",
     fontWeight: "600",
     marginBottom: 2,
   },
-  expiryDate: {
-    fontSize: 12,
-    color: "#64748B",
-  },
-  section: {
-    padding: 15,
-  },
+  expiryDate: { fontSize: 12, color: "#64748B" },
+  section: { padding: 15 },
   sectionTitle: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#1E293B",
     marginBottom: 10,
     paddingHorizontal: 5,
   },
-  card: {
-    backgroundColor: "#FFF",
-    borderRadius: 12,
-    padding: 15,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  inputGroup: {
-    marginBottom: 15,
-  },
-  label: {
-    fontSize: 14,
-    color: "#64748B",
-    marginBottom: 5,
-  },
+  card: { borderRadius: 12, padding: 15, borderWidth: 1 },
+  inputGroup: { marginBottom: 15 },
+  label: { fontSize: 14, color: "#64748B", marginBottom: 5 },
   input: {
     borderWidth: 1,
     borderColor: "#E2E8F0",
     borderRadius: 8,
     padding: 10,
     fontSize: 16,
-    color: "#1E293B",
-  },
-  readOnlyInput: {
-    backgroundColor: "#F1F5F9",
-    color: "#64748B",
   },
   smallInput: {
     borderWidth: 1,
@@ -305,7 +308,6 @@ const styles = StyleSheet.create({
     width: 80,
     textAlign: "center",
     fontSize: 15,
-    color: "#1E293B",
   },
   testButton: {
     backgroundColor: "#F0F4FF",
@@ -314,10 +316,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 5,
   },
-  testButtonText: {
-    color: "#3055C1",
-    fontWeight: "700",
-  },
+  testButtonText: { color: "#3055C1", fontWeight: "700" },
   settingRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -327,16 +326,8 @@ const styles = StyleSheet.create({
     borderBottomColor: "#F1F5F9",
     marginBottom: 10,
   },
-  settingLabel: {
-    fontSize: 16,
-    color: "#1E293B",
-    fontWeight: "600",
-  },
-  settingDesc: {
-    fontSize: 12,
-    color: "#94A3B8",
-    marginTop: 2,
-  },
+  settingLabel: { fontSize: 16, fontWeight: "600" },
+  settingDesc: { fontSize: 12, color: "#94A3B8", marginTop: 2 },
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
@@ -344,53 +335,24 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#F1F5F9",
   },
-  menuText: {
-    flex: 1,
-    fontSize: 16,
-    color: "#1E293B",
-    marginLeft: 15,
-    fontWeight: "500",
-  },
-  buttonGroup: {
-    padding: 20,
-    gap: 12,
-  },
+  menuText: { flex: 1, fontSize: 16, marginLeft: 15, fontWeight: "500" },
+  buttonGroup: { padding: 20, gap: 12 },
   saveButton: {
     backgroundColor: "#3055C1",
     padding: 16,
     borderRadius: 12,
     alignItems: "center",
-    shadowColor: "#3055C1",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
   },
-  saveButtonText: {
-    color: "#FFF",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
+  saveButtonText: { color: "#FFF", fontSize: 16, fontWeight: "bold" },
   logoutButton: {
-    backgroundColor: "#FFF",
+    backgroundColor: "transparent",
     padding: 16,
     borderRadius: 12,
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#E74C3C",
   },
-  logoutButtonText: {
-    color: "#E74C3C",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  footer: {
-    padding: 20,
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  versionText: {
-    fontSize: 12,
-    color: "#94A3B8",
-  },
+  logoutButtonText: { color: "#E74C3C", fontSize: 16, fontWeight: "bold" },
+  footer: { padding: 20, alignItems: "center", marginBottom: 10 },
+  versionText: { fontSize: 12, color: "#94A3B8" },
 });

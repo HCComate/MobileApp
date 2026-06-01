@@ -1,3 +1,5 @@
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -6,12 +8,13 @@ import {
   ScrollView,
   StatusBar,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
+  useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "../../../components/Header";
+import { Colors } from "../../../constants/Colors";
 import {
   EQ_COLORS,
   SEVERITY_COLOR,
@@ -25,19 +28,20 @@ import {
   isCurrentUserAcceptor,
   resolveAlertByDeviceId,
 } from "../../../services/alertManager";
+import apiClient from "../../../services/apiClient"; // api 대신 apiClient 사용 권장 (baseURL 설정 반영)
 import {
   DeviceDetail,
   Direction,
   MachineStatus,
   VisionStatus,
 } from "../../../types/equipment";
-import apiClient from "../../../services/apiClient"; // api 대신 apiClient 사용 권장 (baseURL 설정 반영)
 
 export default function DeviceDetailScreen() {
   const { deviceId } = useLocalSearchParams<{ deviceId: string }>();
   const router = useRouter();
   const logs = useLogData();
-  
+  const theme = useColorScheme() ?? "light";
+
   const [showResolveButton, setShowResolveButton] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [serverDevice, setServerDevice] = useState<DeviceDetail | null>(null);
@@ -48,18 +52,22 @@ export default function DeviceDetailScreen() {
 
     const fetchDetail = async () => {
       if (!deviceId) return;
-      
+
       try {
-        console.log("데이터 요청 시작 (URL: /api/devices/" + deviceId + "/detail)...");
+        console.log(
+          "데이터 요청 시작 (URL: /api/devices/" + deviceId + "/detail)...",
+        );
         // 주의: 분석 결과 서버 경로는 /api/devices/{id}/detail 입니다.
         const response = await apiClient.get(`/api/devices/${deviceId}/detail`);
-        
+
         console.log("데이터 수신 성공 (Raw):", response.data);
-        
+
         // MobileServer는 ApiResponse 래퍼를 사용하므로 response.data.data를 확인해야 함
-        const actualData = response.data.success ? response.data.data : response.data;
+        const actualData = response.data.success
+          ? response.data.data
+          : response.data;
         console.log("실제 데이터 추출:", actualData);
-        
+
         setServerDevice(actualData);
       } catch (error: any) {
         console.error("데이터 요청 실패:", error);
@@ -141,9 +149,16 @@ export default function DeviceDetailScreen() {
   // 로딩 상태 표시
   if (isLoading && !detail) {
     return (
-      <SafeAreaView style={styles.loadingContainer}>
+      <SafeAreaView
+        style={[
+          styles.loadingContainer,
+          { backgroundColor: Colors[theme].background },
+        ]}
+      >
         <ActivityIndicator size="large" color="#3B82F6" />
-        <Text style={{ marginTop: 10, color: "#64748B" }}>장비 데이터를 불러오는 중...</Text>
+        <ThemedText style={{ marginTop: 10 }}>
+          장비 데이터를 불러오는 중...
+        </ThemedText>
       </SafeAreaView>
     );
   }
@@ -151,10 +166,18 @@ export default function DeviceDetailScreen() {
   // 데이터 없음 표시
   if (!detail) {
     return (
-      <SafeAreaView style={styles.loadingContainer}>
-        <Text style={{ color: "#64748B" }}>장비 정보를 찾을 수 없습니다.</Text>
-        <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 20 }}>
-          <Text style={{ color: "#3B82F6" }}>뒤로 가기</Text>
+      <SafeAreaView
+        style={[
+          styles.loadingContainer,
+          { backgroundColor: Colors[theme].background },
+        ]}
+      >
+        <ThemedText>장비 정보를 찾을 수 없습니다.</ThemedText>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={{ marginTop: 20 }}
+        >
+          <ThemedText style={{ color: "#3B82F6" }}>뒤로 가기</ThemedText>
         </TouchableOpacity>
       </SafeAreaView>
     );
@@ -163,101 +186,136 @@ export default function DeviceDetailScreen() {
   const statusColor = STATUS_COLOR[detail.machineStatus] || "#94A3B8";
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "right", "left"]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: Colors[theme].background }]}
+    >
       <Stack.Screen options={{ headerShown: false }} />
       <StatusBar
-        barStyle="light-content"
+        barStyle={theme === "dark" ? "light-content" : "dark-content"}
         backgroundColor={EQ_COLORS.headerBg}
       />
       <Header />
-      <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.statusSection}>
-          <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
-            <Text style={styles.statusBadgeText}>
-              {STATUS_LABEL[detail.machineStatus]}
-            </Text>
-          </View>
-          <Text style={styles.deviceId}>{detail.deviceId}</Text>
-          <Text style={styles.modelName}>{detail.modelName}</Text>
-        </View>
-
-        <View style={styles.infoCard}>
-          <Text style={styles.cardTitle}>주요 정보</Text>
-          <View style={styles.divider} />
-          <InfoRow label="배치 ID" value={detail.batchId} />
-          <InfoRow label="시퀀스" value={String(detail.sequence)} />
-          <InfoRow
-            label="비전 결과"
-            value={detail.visionResult.result}
-            valueColor={
-              detail.visionResult.result === "NG"
-                ? EQ_COLORS.ngRed
-                : EQ_COLORS.okGreen
-            }
-          />
-        </View>
-
-        <View style={styles.infoCard}>
-          <Text style={styles.cardTitle}>센서 데이터</Text>
-          <View style={styles.divider} />
-          <InfoRow label="온도" value={`${detail.temperature.toFixed(1)}°C`} />
-          <InfoRow
-            label="진동 (X/Y)"
-            value={`${detail.vibrationX.toFixed(2)} / ${detail.vibrationY.toFixed(2)}`}
-          />
-          <InfoRow
-            label="조도"
-            value={`${detail.illumination.toFixed(3)} lux`}
-          />
-          <InfoRow label="습도" value={`${(detail.humidity ?? 0).toFixed(3)} %`} />
-        </View>
-
-        <View style={styles.infoCard}>
-          <Text style={styles.cardTitle}>
-            상태 정보 ({detail.statusInfos.length})
-          </Text>
-          <View style={styles.divider} />
-          {detail.statusInfos.map((status, index) => (
+      <ThemedView style={{ flex: 1 }}>
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.statusSection}>
             <View
-              key={index}
-              style={[
-                styles.statusItem,
-                {
-                  borderLeftColor: SEVERITY_COLOR[status.severity] || "#CBD5E1",
-                },
-              ]}
+              style={[styles.statusBadge, { backgroundColor: statusColor }]}
             >
-              <View style={styles.statusItemHeader}>
-                <Text style={styles.statusCode}>{status.code}</Text>
-                <View
-                  style={[
-                    styles.severityBadge,
-                    {
-                      backgroundColor:
-                        SEVERITY_COLOR[status.severity] || "#CBD5E1",
-                    },
-                  ]}
-                >
-                  <Text style={styles.severityText}>{status.severity}</Text>
-                </View>
-              </View>
-              <Text style={styles.statusMsg}>{status.msg}</Text>
+              <ThemedText style={styles.statusBadgeText}>
+                {STATUS_LABEL[detail.machineStatus]}
+              </ThemedText>
             </View>
-          ))}
-        </View>
+            <ThemedText style={styles.deviceId}>{detail.deviceId}</ThemedText>
+            <ThemedText style={styles.modelName}>{detail.modelName}</ThemedText>
+          </View>
 
-        {showResolveButton && (
-          <TouchableOpacity
-            style={styles.resolveErrorButton}
-            onPress={handleResolveError}
-          >
-            <Text style={styles.resolveErrorButtonText}>오류 수정 완료</Text>
-          </TouchableOpacity>
-        )}
-      </ScrollView>
+          <ThemedView style={styles.infoCard}>
+            <ThemedText style={styles.cardTitle}>주요 정보</ThemedText>
+            <View
+              style={[
+                styles.divider,
+                { backgroundColor: Colors[theme].border },
+              ]}
+            />
+            <InfoRow label="배치 ID" value={detail.batchId} />
+            <InfoRow label="시퀀스" value={String(detail.sequence)} />
+            <InfoRow
+              label="비전 결과"
+              value={detail.visionResult.result}
+              valueColor={
+                detail.visionResult.result === "NG"
+                  ? EQ_COLORS.ngRed
+                  : EQ_COLORS.okGreen
+              }
+            />
+          </ThemedView>
+
+          <ThemedView style={styles.infoCard}>
+            <ThemedText style={styles.cardTitle}>센서 데이터</ThemedText>
+            <View
+              style={[
+                styles.divider,
+                { backgroundColor: Colors[theme].border },
+              ]}
+            />
+            <InfoRow
+              label="온도"
+              value={`${detail.temperature.toFixed(1)}°C`}
+            />
+            <InfoRow
+              label="진동 (X/Y)"
+              value={`${detail.vibrationX.toFixed(2)} / ${detail.vibrationY.toFixed(2)}`}
+            />
+            <InfoRow
+              label="조도"
+              value={`${detail.illumination.toFixed(3)} lux`}
+            />
+            <InfoRow
+              label="습도"
+              value={`${(detail.humidity ?? 0).toFixed(3)} %`}
+            />
+          </ThemedView>
+
+          <ThemedView style={styles.infoCard}>
+            <ThemedText style={styles.cardTitle}>
+              상태 정보 ({detail.statusInfos.length})
+            </ThemedText>
+            <View
+              style={[
+                styles.divider,
+                { backgroundColor: Colors[theme].border },
+              ]}
+            />
+            {detail.statusInfos.map((status, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.statusItem,
+                  {
+                    borderLeftColor:
+                      SEVERITY_COLOR[status.severity] || "#CBD5E1",
+                    backgroundColor: Colors[theme].background,
+                  },
+                ]}
+              >
+                <View style={styles.statusItemHeader}>
+                  <ThemedText style={styles.statusCode}>
+                    {status.code}
+                  </ThemedText>
+                  <View
+                    style={[
+                      styles.severityBadge,
+                      {
+                        backgroundColor:
+                          SEVERITY_COLOR[status.severity] || "#CBD5E1",
+                      },
+                    ]}
+                  >
+                    <ThemedText style={styles.severityText}>
+                      {status.severity}
+                    </ThemedText>
+                  </View>
+                </View>
+                <ThemedText style={styles.statusMsg}>{status.msg}</ThemedText>
+              </View>
+            ))}
+          </ThemedView>
+
+          {showResolveButton && (
+            <TouchableOpacity
+              style={styles.resolveErrorButton}
+              onPress={handleResolveError}
+            >
+              <ThemedText style={styles.resolveErrorButtonText}>
+                오류 수정 완료
+              </ThemedText>
+            </TouchableOpacity>
+          )}
+        </ScrollView>
+      </ThemedView>
     </SafeAreaView>
   );
 }
@@ -265,15 +323,17 @@ export default function DeviceDetailScreen() {
 const InfoRow = ({
   label,
   value,
-  valueColor = EQ_COLORS.textPrimary,
+  valueColor,
 }: {
   label: string;
   value: string;
   valueColor?: string;
 }) => (
   <View style={styles.infoRow}>
-    <Text style={styles.infoLabel}>{label}</Text>
-    <Text style={[styles.infoValue, { color: valueColor }]}>{value}</Text>
+    <ThemedText style={styles.infoLabel}>{label}</ThemedText>
+    <ThemedText style={[styles.infoValue, { color: valueColor || undefined }]}>
+      {value}
+    </ThemedText>
   </View>
 );
 
@@ -282,9 +342,8 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#F8FAFC",
   },
-  container: { flex: 1, backgroundColor: "#F8FAFC" },
+  container: { flex: 1 },
   scrollView: { flex: 1, padding: 16 },
   statusSection: {
     alignItems: "center",
@@ -304,28 +363,26 @@ const styles = StyleSheet.create({
   deviceId: { fontSize: 26, fontWeight: "800", color: "#FFF" },
   modelName: { fontSize: 14, color: "#FFF", opacity: 0.8, marginTop: 4 },
   infoCard: {
-    backgroundColor: "#FFF",
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: "transparent",
   },
   cardTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#1E293B",
     marginBottom: 12,
   },
-  divider: { height: 1, backgroundColor: "#F1F5F9", marginBottom: 12 },
+  divider: { height: 1, marginBottom: 12 },
   infoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 10,
   },
-  infoLabel: { color: "#64748B", fontSize: 14 },
-  infoValue: { fontWeight: "600", fontSize: 14, color: "#1E293B" },
+  infoLabel: { fontSize: 14 },
+  infoValue: { fontWeight: "600", fontSize: 14 },
   statusItem: {
-    backgroundColor: "#F8FAFC",
     padding: 12,
     borderRadius: 8,
     borderLeftWidth: 4,
@@ -337,10 +394,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 6,
   },
-  statusCode: { fontWeight: "700", fontSize: 14, color: "#1E293B" },
+  statusCode: { fontWeight: "700", fontSize: 14 },
   severityBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
   severityText: { color: "#FFF", fontSize: 10, fontWeight: "700" },
-  statusMsg: { fontSize: 13, color: "#475569" },
+  statusMsg: { fontSize: 13 },
   resolveErrorButton: {
     backgroundColor: "#10B981",
     padding: 16,

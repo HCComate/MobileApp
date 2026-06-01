@@ -1,11 +1,20 @@
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
+import { Colors } from "@/constants/Colors";
 import { useRouter } from "expo-router";
 import React, { useEffect } from "react";
-import { ActivityIndicator, Image, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Image,
+  StyleSheet,
+  View,
+  useColorScheme,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Colors } from "../constants/Colors";
 
 export default function SplashScreen() {
   const router = useRouter();
+  const theme = useColorScheme() ?? "light";
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -15,27 +24,33 @@ export default function SplashScreen() {
   }, [router]);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.logoContainer}>
-        <Image
-          source={require("../assets/images/logo.png")}
-          style={styles.logoImage}
-          resizeMode="contain"
-        />
-        <Text style={styles.subtitleText}>VisionMate</Text>
-      </View>
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.light.text} />
-        <Text style={styles.loadingText}>Connecting...</Text>
-      </View>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: Colors[theme].background }]}
+    >
+      <ThemedView style={styles.container}>
+        <View style={styles.logoContainer}>
+          <Image
+            source={require("../assets/images/logo.png")}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
+          <ThemedText style={styles.subtitleText}>VisionMate</ThemedText>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors[theme].text} />
+          <ThemedText style={styles.loadingText}>Connecting...</ThemedText>
+        </View>
+      </ThemedView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: Colors.light.background,
     justifyContent: "space-between",
     alignItems: "center",
     paddingVertical: 60,
@@ -53,7 +68,6 @@ const styles = StyleSheet.create({
   },
   subtitleText: {
     fontSize: 16,
-    color: "#888888",
     fontWeight: "500",
     letterSpacing: 1,
   },
@@ -64,7 +78,6 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 14,
     fontSize: 14,
-    color: Colors.light.text,
     opacity: 0.7,
     fontWeight: "500",
   },
