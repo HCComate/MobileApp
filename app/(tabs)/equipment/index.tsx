@@ -9,8 +9,10 @@ import {
   Text,
   TouchableOpacity,
   View,
+  useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Colors } from "../../../constants/Colors";
 import {
   EQ_COLORS,
   SEVERITY_COLOR,
@@ -28,6 +30,7 @@ type ViewMode = "list" | "grid";
 
 export default function EquipmentStatsScreen() {
   const router = useRouter();
+  const theme = useColorScheme() ?? "light";
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [currentPage, setCurrentPage] = useState(0);
 
@@ -84,7 +87,10 @@ export default function EquipmentStatsScreen() {
         <TouchableOpacity
           style={[
             styles.listCard,
-            { borderLeftColor: statusColor },
+            {
+              borderLeftColor: statusColor,
+              backgroundColor: Colors[theme].background,
+            },
             isNG && styles.listCardNG,
           ]}
           onPress={() => goToDetail(item.deviceId)}
@@ -95,14 +101,22 @@ export default function EquipmentStatsScreen() {
           </View>
           <View style={styles.listBody}>
             <View style={styles.listRow}>
-              <Text style={styles.deviceIdText}>{item.deviceId}</Text>
+              <Text
+                style={[styles.deviceIdText, { color: Colors[theme].text }]}
+              >
+                {item.deviceId}
+              </Text>
               <View style={[styles.badge, { backgroundColor: statusColor }]}>
                 <Text style={styles.badgeText}>
                   {STATUS_LABEL[item.machineStatus] || "알 수 없음"}
                 </Text>
               </View>
             </View>
-            <Text style={styles.modelName}>{item.modelName}</Text>
+            <Text
+              style={[styles.modelName, { color: Colors[theme].description }]}
+            >
+              {item.modelName}
+            </Text>
             <View style={styles.summaryGrid}>
               <SummaryItem
                 label="Seq"
@@ -125,11 +139,13 @@ export default function EquipmentStatsScreen() {
               <SummaryItem label="시간" value={timeDisplay} />
             </View>
           </View>
-          <Text style={styles.chevron}>›</Text>
+          <Text style={[styles.chevron, { color: Colors[theme].border }]}>
+            ›
+          </Text>
         </TouchableOpacity>
       );
     },
-    [goToDetail],
+    [goToDetail, theme],
   );
 
   // ── 그리드 아이템 ─────────────────────────────
@@ -142,7 +158,10 @@ export default function EquipmentStatsScreen() {
         key={item.deviceId}
         style={[
           styles.gridCell,
-          { borderColor: statusColor },
+          {
+            borderColor: statusColor,
+            backgroundColor: Colors[theme].background,
+          },
           isNG && styles.gridCellNG,
         ]}
         onPress={() => goToDetail(item.deviceId)}
@@ -153,7 +172,10 @@ export default function EquipmentStatsScreen() {
         >
           <Text style={styles.gridThumbIcon}>🎥</Text>
         </View>
-        <Text style={styles.gridId} numberOfLines={1}>
+        <Text
+          style={[styles.gridId, { color: Colors[theme].text }]}
+          numberOfLines={1}
+        >
           {shortId}
         </Text>
         <View style={[styles.gridDot, { backgroundColor: statusColor }]} />
@@ -167,10 +189,12 @@ export default function EquipmentStatsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: Colors[theme].background }]}
+    >
       <Stack.Screen options={{ headerShown: false }} />
       <StatusBar
-        barStyle="light-content"
+        barStyle={theme === "dark" ? "light-content" : "dark-content"}
         backgroundColor={EQ_COLORS.headerBg}
       />
       <View style={styles.header}>
@@ -319,7 +343,9 @@ const SummaryItem = ({
   valueColor?: string;
 }) => (
   <View style={styles.summaryItem}>
-    <Text style={styles.summaryLabel}>{label} </Text>
+    <Text style={[styles.summaryLabel, { color: EQ_COLORS.textMuted }]}>
+      {label}{" "}
+    </Text>
     <Text style={[styles.summaryValue, { color: valueColor }]}>{value}</Text>
   </View>
 );
@@ -327,7 +353,7 @@ const SummaryItem = ({
 const CELL = (SW - 32 - 9 * 3) / 4;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: EQ_COLORS.pageBg },
+  container: { flex: 1 },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -376,7 +402,6 @@ const styles = StyleSheet.create({
   listContent: { padding: 12, gap: 10 },
   listCard: {
     flexDirection: "row",
-    backgroundColor: EQ_COLORS.cardBg,
     borderRadius: 12,
     borderLeftWidth: 4,
     padding: 12,
@@ -392,7 +417,6 @@ const styles = StyleSheet.create({
   listThumb: {
     width: 64,
     height: 64,
-    backgroundColor: "#F1F5F9",
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
@@ -407,22 +431,20 @@ const styles = StyleSheet.create({
   deviceIdText: {
     fontSize: 14,
     fontWeight: "700",
-    color: EQ_COLORS.textPrimary,
   },
-  modelName: { fontSize: 12, color: EQ_COLORS.textSecondary },
+  modelName: { fontSize: 12 },
   badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 },
   badgeText: { color: EQ_COLORS.white, fontSize: 11, fontWeight: "600" },
   summaryGrid: { flexDirection: "row", flexWrap: "wrap", gap: 4, marginTop: 4 },
   summaryItem: { width: "48%", flexDirection: "row" },
-  summaryLabel: { fontSize: 11, color: EQ_COLORS.textMuted },
+  summaryLabel: { fontSize: 11 },
   summaryValue: { fontSize: 11, fontWeight: "600" },
-  chevron: { fontSize: 22, color: EQ_COLORS.borderMuted },
+  chevron: { fontSize: 22 },
   gridContainer: { flex: 1, paddingHorizontal: 16, paddingTop: 12 },
   gridWrapper: { flexDirection: "row", flexWrap: "wrap", gap: 9 },
   gridCell: {
     width: CELL,
     height: CELL + 24,
-    backgroundColor: EQ_COLORS.cardBg,
     borderRadius: 10,
     borderWidth: 2,
     alignItems: "center",
@@ -446,7 +468,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   gridThumbIcon: { fontSize: 20 },
-  gridId: { fontSize: 12, fontWeight: "700", color: EQ_COLORS.textPrimary },
+  gridId: { fontSize: 12, fontWeight: "700" },
   gridDot: { width: 6, height: 6, borderRadius: 3 },
   gridNGBadge: {
     position: "absolute",

@@ -1,13 +1,24 @@
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
 import { Stack } from "expo-router";
 import React from "react";
-import { FlatList, StyleSheet, Text, View } from "react-native";
+import {
+  FlatList,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+  useColorScheme,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "../../../components/Header";
+import { Colors } from "../../../constants/Colors";
 import { useLogData } from "../../../hooks/updateData"; // useLogData 훅 임포트
 import { RawLog } from "../../../mock/Logs"; // 타입 임포트
 
 export default function AllLogScreen() {
   const logs = useLogData(); // 서버로부터 실시간 로그 데이터 가져오기
+  const theme = useColorScheme() ?? "light";
 
   const getStatusStyle = (item: RawLog) => {
     const info = item.body.status_info[0] || { msg: "", severity: "LOW" };
@@ -34,8 +45,11 @@ export default function AllLogScreen() {
     if (info.severity === "MEDIUM") {
       return { backgroundColor: "#F1C40F", textColor: "#000000" };
     }
-    // 일반적인 경우는 흰색
-    return { backgroundColor: "#F2F4F7", textColor: "#333333" };
+    // 일반적인 경우는 라이트/다크 모드에 따른 배경색
+    return {
+      backgroundColor: theme === "dark" ? "#1F2937" : "#F2F4F7",
+      textColor: Colors[theme].text,
+    };
   };
 
   const renderLogItem = ({ item }: { item: RawLog }) => {
@@ -76,14 +90,32 @@ export default function AllLogScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "right", "left"]}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: Colors[theme].background }]}
+      edges={["top", "right", "left"]}
+    >
       <Stack.Screen options={{ headerShown: false }} />
+      <StatusBar
+        barStyle={theme === "dark" ? "light-content" : "dark-content"}
+      />
       <Header />
-      <View style={styles.container}>
-        <View style={styles.pageHeader}>
-          <Text style={styles.headerTitle}>전체 로그 보기 (실시간)</Text>
+      <ThemedView style={styles.container}>
+        <View
+          style={[
+            styles.pageHeader,
+            { backgroundColor: theme === "dark" ? "#111827" : "#1D1D5A" },
+          ]}
+        >
+          <ThemedText style={styles.headerTitle}>
+            전체 로그 보기 (실시간)
+          </ThemedText>
         </View>
-        <View style={styles.columnHeader}>
+        <View
+          style={[
+            styles.columnHeader,
+            { backgroundColor: theme === "dark" ? "#374151" : "#4A4A6A" },
+          ]}
+        >
           <Text style={[styles.columnText, { flex: 0.8 }]}>장비</Text>
           <Text style={[styles.columnText, { flex: 1.2 }]}>일시</Text>
           <Text style={[styles.columnText, { flex: 2 }]}>로그 내용</Text>
@@ -95,27 +127,25 @@ export default function AllLogScreen() {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>수신된 로그가 없습니다.</Text>
+              <ThemedText>수신된 로그가 없습니다.</ThemedText>
             </View>
           }
         />
-      </View>
+      </ThemedView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#FFFFFF" },
+  safeArea: { flex: 1 },
   container: { flex: 1 },
   pageHeader: {
-    backgroundColor: "#1D1D5A",
     paddingVertical: 15,
     alignItems: "center",
   },
   headerTitle: { fontSize: 18, fontWeight: "bold", color: "#FFFFFF" },
   columnHeader: {
     flexDirection: "row",
-    backgroundColor: "#4A4A6A",
     paddingVertical: 10,
     paddingHorizontal: 10,
   },
@@ -139,5 +169,4 @@ const styles = StyleSheet.create({
   cellText: { fontSize: 14 },
   timeText: { fontSize: 11 },
   emptyContainer: { flex: 1, alignItems: "center", marginTop: 50 },
-  emptyText: { color: "#999", fontSize: 14 },
 });

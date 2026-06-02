@@ -1,19 +1,26 @@
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
 import { Ionicons } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Image,
+  StatusBar,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
+  useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Colors } from "../constants/Colors";
+import { WORKER_IMAGES } from "../constants/workerImages";
 import apiClient from "../services/apiClient";
 
 export default function ManagementScreen() {
   const router = useRouter();
+  const theme = useColorScheme() ?? "light";
   const [workers, setWorkers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -56,62 +63,82 @@ export default function ManagementScreen() {
     }
   };
 
-  const renderWorkerItem = ({ item }: { item: any }) => (
-    <View style={styles.workerItem}>
-      <View
-        style={[
-          styles.profileIconContainer,
-          { borderColor: getRoleColor(item.role), borderWidth: 2 },
-        ]}
-      >
-        <Ionicons
-          name="person-circle"
-          size={46}
-          color={getRoleColor(item.role)}
-        />
-      </View>
-      <View style={styles.workerInfo}>
-        <Text style={styles.workerName}>
-          {item.name}({item.id})
-        </Text>
-        <Text
-          style={{
-            fontSize: 12,
-            color: getRoleColor(item.role),
-            fontWeight: "bold",
-          }}
-        >
-          {item.role}
-        </Text>
-        <Text
+  const renderWorkerItem = ({ item, index }: { item: any; index: number }) => {
+    const imageSource = WORKER_IMAGES[index + 1];
+
+    return (
+      <View style={styles.workerItem}>
+        <View
           style={[
-            styles.workerStatus,
-            { color: item.status === "근무 중" ? "#3055C1" : "#A57373" },
+            styles.profileIconContainer,
+            {
+              borderColor: getRoleColor(item.role),
+              borderWidth: 2,
+              overflow: "hidden",
+            },
           ]}
         >
-          {item.status}
-        </Text>
+          {imageSource ? (
+            <Image source={imageSource} style={{ width: 46, height: 46 }} />
+          ) : (
+            <Ionicons
+              name="person-circle"
+              size={46}
+              color={getRoleColor(item.role)}
+            />
+          )}
+        </View>
+        <View style={styles.workerInfo}>
+          <ThemedText style={styles.workerName}>
+            {item.name}({item.id})
+          </ThemedText>
+          <ThemedText
+            style={{
+              fontSize: 12,
+              color: getRoleColor(item.role),
+              fontWeight: "bold",
+            }}
+          >
+            {item.role}
+          </ThemedText>
+          <ThemedText
+            style={[
+              styles.workerStatus,
+              { color: item.status === "근무 중" ? "#3055C1" : "#A57373" },
+            ]}
+          >
+            {item.status}
+          </ThemedText>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
-    <>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: Colors[theme].background }]}
+    >
       <Stack.Screen options={{ headerShown: false }} />
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.header}>
+      <StatusBar
+        barStyle={theme === "dark" ? "light-content" : "dark-content"}
+      />
+
+      <ThemedView style={styles.container}>
+        <View
+          style={[styles.header, { borderBottomColor: Colors[theme].border }]}
+        >
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.back()}
           >
-            <Ionicons name="arrow-back" size={24} color="#000" />
+            <Ionicons name="arrow-back" size={24} color={Colors[theme].text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>작업자 관리</Text>
+          <ThemedText style={styles.headerTitle}>작업자 관리</ThemedText>
         </View>
 
         {isLoading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#3055C1" />
+            <ActivityIndicator size="large" color={Colors[theme].tint} />
           </View>
         ) : (
           <FlatList
@@ -119,23 +146,30 @@ export default function ManagementScreen() {
             keyExtractor={(item) => item.id}
             renderItem={renderWorkerItem}
             contentContainerStyle={styles.listContainer}
-            ItemSeparatorComponent={() => <View style={styles.separator} />}
+            ItemSeparatorComponent={() => (
+              <View
+                style={[
+                  styles.separator,
+                  { backgroundColor: Colors[theme].border },
+                ]}
+              />
+            )}
           />
         )}
-      </SafeAreaView>
-    </>
+      </ThemedView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#FFFFFF" },
+  safeArea: { flex: 1 },
+  container: { flex: 1 },
   header: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: "#EEEEEE",
   },
   backButton: { padding: 4, marginRight: 8 },
   headerTitle: { fontSize: 20, fontWeight: "bold" },
@@ -155,6 +189,6 @@ const styles = StyleSheet.create({
   workerInfo: { marginLeft: 15 },
   workerName: { fontSize: 16, fontWeight: "600" },
   workerStatus: { fontSize: 14, marginTop: 4, fontWeight: "500" },
-  separator: { height: 1, backgroundColor: "#F5F5F5" },
+  separator: { height: 1 },
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
 });

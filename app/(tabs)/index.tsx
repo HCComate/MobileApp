@@ -1,6 +1,13 @@
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { StatusBar, StyleSheet, Text, View } from "react-native";
+import {
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+  useColorScheme,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import CalendarView from "../../components/CalendarView";
 import Header from "../../components/Header";
@@ -12,7 +19,7 @@ import { dailyMessages } from "../../constants/DailyMessages";
 export default function HomeScreen() {
   // 오늘 날짜 상태 관리
   const [today] = useState(new Date());
-
+  const theme = useColorScheme() ?? "light";
   const router = useRouter();
 
   // 날짜 관련 데이터 계산
@@ -45,19 +52,33 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "right", "left"]}>
-      <StatusBar barStyle="dark-content" />
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: Colors[theme].background }]}
+      edges={["top", "right", "left"]}
+    >
+      <StatusBar
+        barStyle={theme === "dark" ? "light-content" : "dark-content"}
+      />
 
       {/* 헤더바 */}
       <Header />
 
-      <View style={styles.mainContainer}>
+      <ScrollView
+        style={[
+          styles.mainContainer,
+          { backgroundColor: Colors[theme].background },
+        ]}
+        // flexGrow: 1을 통해 화면 전체를 채우게 하고, 하단 여백 확보
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }}
+      >
         {/* 날짜 섹션 */}
         <View style={styles.dateSection}>
-          <Text style={styles.dateTitle}>
+          <Text style={[styles.dateTitle, { color: Colors[theme].text }]}>
             {month}월 {day}일
           </Text>
-          <Text style={styles.dateSubtitle}>{dailyMessages[dayOfWeek]}</Text>
+          <Text style={[styles.dateSubtitle, { color: Colors[theme].text }]}>
+            {dailyMessages[dayOfWeek]}
+          </Text>
         </View>
 
         {/* 안내 배너 */}
@@ -67,10 +88,13 @@ export default function HomeScreen() {
           <CalendarView selectedDate={calendarDate} />
         </View>
 
+        {/* 달력과 버튼 사이를 유연하게 채워주는 빈 공간 */}
+        <View style={{ flex: 1 }} />
+
         <View style={styles.menuContainer}>
           <MenuButtons items={HOME_MENU} onPress={handleMenuPress} />
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -78,13 +102,10 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Colors.light.background,
   },
   mainContainer: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingBottom: 10,
-    backgroundColor: Colors.light.background,
   },
   dateSection: {
     marginTop: 10,
@@ -93,24 +114,19 @@ const styles = StyleSheet.create({
   dateTitle: {
     fontSize: 34,
     fontWeight: "bold",
-    color: Colors.light.text,
   },
   dateSubtitle: {
     fontSize: 20,
-    color: Colors.light.text,
     marginTop: 4,
     fontWeight: "500",
   },
   calendarContainer: {
-    flex: 1,
-    maxHeight: 380,
     marginVertical: 10,
-    backgroundColor: Colors.light.background,
+    width: "100%",
   },
   menuContainer: {
-    marginTop: "auto",
+    paddingTop: 10,
     marginBottom: 5,
-    backgroundColor: Colors.light.background,
     zIndex: 10,
   },
 });

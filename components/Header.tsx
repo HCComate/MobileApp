@@ -15,6 +15,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  useColorScheme,
 } from "react-native";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -24,6 +25,8 @@ export default function Header() {
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
+  const theme = useColorScheme() ?? "light";
+  const colors = Colors[theme];
   const currentHelp = PAGE_HELP_INFO[pathname] || PAGE_HELP_INFO.default;
 
   const navigateTo = (path: string) => {
@@ -32,39 +35,36 @@ export default function Header() {
   };
 
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, { backgroundColor: colors.background }]}>
       <TouchableOpacity onPress={() => setIsMenuOpen(true)}>
-        <Ionicons name="menu" size={28} color={Colors.light.text} />
+        <Ionicons name="menu" size={28} color={colors.text} />
       </TouchableOpacity>
 
       <View style={styles.logoContainer}>
         <Image
           source={require("../assets/images/logo.png")}
-          style={styles.logoImage}
+          style={[styles.logoImage, { borderColor: colors.border }]}
           resizeMode="contain"
         />
-        <Text style={styles.logoText}>VisionMate</Text>
+        <Text style={[styles.logoText, { color: colors.text }]}>
+          VisionMate
+        </Text>
 
-        {/* 서버 모드 표시 */}
-        <View style={styles.modeBadge}>
+        <View style={[styles.modeBadge, { backgroundColor: colors.border }]}>
           <View
             style={[
               styles.modeDot,
               { backgroundColor: isServerMode ? "#22C55E" : "#F59E0B" },
             ]}
           />
-          <Text style={styles.modeText}>
+          <Text style={[styles.modeText, { color: colors.text }]}>
             {isServerMode ? "서버" : "목업"}
           </Text>
         </View>
       </View>
 
       <TouchableOpacity onPress={() => setIsHelpOpen(true)}>
-        <Ionicons
-          name="help-circle-outline"
-          size={26}
-          color={Colors.light.text}
-        />
+        <Ionicons name="help-circle-outline" size={26} color={colors.text} />
       </TouchableOpacity>
 
       <Modal
@@ -74,11 +74,23 @@ export default function Header() {
         onRequestClose={() => setIsMenuOpen(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.drawerContainer}>
-            <View style={styles.drawerHeader}>
-              <Text style={styles.menuTitle}>MENU</Text>
+          <View
+            style={[
+              styles.drawerContainer,
+              { backgroundColor: colors.background },
+            ]}
+          >
+            <View
+              style={[
+                styles.drawerHeader,
+                { borderBottomColor: colors.border },
+              ]}
+            >
+              <Text style={[styles.menuTitle, { color: colors.text }]}>
+                MENU
+              </Text>
               <TouchableOpacity onPress={() => setIsMenuOpen(false)}>
-                <Ionicons name="close" size={24} color="#94a3b8" />
+                <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
             <ScrollView
@@ -88,14 +100,23 @@ export default function Header() {
               {MENU_GROUPS.map((group, idx) => (
                 <View key={idx} style={styles.groupContainer}>
                   <Text style={styles.groupTitle}>{group.title}</Text>
-                  <View style={styles.itemWrapper}>
+                  <View
+                    style={[
+                      styles.itemWrapper,
+                      { borderLeftColor: colors.border },
+                    ]}
+                  >
                     {group.items.map((item) => (
                       <TouchableOpacity
                         key={item.id}
                         style={styles.menuItem}
                         onPress={() => navigateTo(item.path)}
                       >
-                        <Text style={styles.menuItemText}>{item.label}</Text>
+                        <Text
+                          style={[styles.menuItemText, { color: colors.text }]}
+                        >
+                          {item.label}
+                        </Text>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -118,21 +139,32 @@ export default function Header() {
         onRequestClose={() => setIsHelpOpen(false)}
       >
         <View style={styles.helpOverlay}>
-          <View style={styles.helpContent}>
+          <View
+            style={[styles.helpContent, { backgroundColor: colors.background }]}
+          >
             <View style={styles.helpHeader}>
               <Ionicons
                 name="information-circle"
                 size={22}
-                color={Colors.light.tint}
+                color={colors.tint}
               />
-              <Text style={styles.helpTitle}>{currentHelp.title}</Text>
+              <Text style={[styles.helpTitle, { color: colors.text }]}>
+                {currentHelp.title}
+              </Text>
             </View>
-            <Text style={styles.helpDescription}>{currentHelp.desc}</Text>
+            <Text style={[styles.helpDescription, { color: colors.text }]}>
+              {currentHelp.desc}
+            </Text>
             <TouchableOpacity
-              style={styles.helpCloseButton}
+              style={[
+                styles.helpCloseButton,
+                { backgroundColor: colors.border },
+              ]}
               onPress={() => setIsHelpOpen(false)}
             >
-              <Text style={styles.helpCloseText}>닫기</Text>
+              <Text style={[styles.helpCloseText, { color: colors.text }]}>
+                닫기
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -148,7 +180,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: Colors.light.background,
   },
   logoContainer: { flexDirection: "row", alignItems: "center" },
   logoImage: {
@@ -157,38 +188,23 @@ const styles = StyleSheet.create({
     marginRight: 8,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#EBF2FA",
   },
   logoText: {
     marginLeft: 6,
     fontSize: 20,
     fontWeight: "bold",
-    color: Colors.light.text,
     letterSpacing: -0.5,
   },
-
-  // 모드 표시 배지
   modeBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F1F5F9",
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 10,
     marginLeft: 8,
   },
-  modeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 4,
-  },
-  modeText: {
-    fontSize: 10,
-    fontWeight: "600",
-    color: "#64748B",
-  },
-
+  modeDot: { width: 6, height: 6, borderRadius: 3, marginRight: 4 },
+  modeText: { fontSize: 10, fontWeight: "600" },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.4)",
@@ -196,14 +212,8 @@ const styles = StyleSheet.create({
   },
   drawerContainer: {
     width: SCREEN_WIDTH * 0.65,
-    backgroundColor: "#FFFFFF",
     height: "100%",
     paddingTop: 50,
-    shadowColor: "#000",
-    shadowOffset: { width: 4, height: 0 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 5,
   },
   outsideClose: { flex: 1 },
   drawerHeader: {
@@ -213,14 +223,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 20,
     borderBottomWidth: 1,
-    borderBottomColor: "#f8fafc",
   },
-  menuTitle: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#0f172a",
-    letterSpacing: 2,
-  },
+  menuTitle: { fontSize: 14, fontWeight: "800", letterSpacing: 2 },
   menuScrollView: { flex: 1, paddingHorizontal: 24 },
   groupContainer: { marginTop: 32 },
   groupTitle: {
@@ -230,17 +234,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     letterSpacing: 1.5,
   },
-  itemWrapper: {
-    borderLeftWidth: 1.5,
-    borderLeftColor: "#f1f5f9",
-    paddingLeft: 16,
-  },
+  itemWrapper: { borderLeftWidth: 1.5, paddingLeft: 16 },
   menuItem: { paddingVertical: 12 },
-  menuItemText: {
-    fontSize: 16,
-    color: "#334155",
-    fontWeight: "500",
-  },
+  menuItemText: { fontSize: 16, fontWeight: "500" },
   helpOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
@@ -250,38 +246,22 @@ const styles = StyleSheet.create({
   },
   helpContent: {
     width: "85%",
-    backgroundColor: "#FFFFFF",
     borderRadius: 20,
     padding: 24,
     alignItems: "center",
-    elevation: 10,
   },
-  helpHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  helpTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#1e293b",
-    marginLeft: 8,
-  },
+  helpHeader: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
+  helpTitle: { fontSize: 18, fontWeight: "bold", marginLeft: 8 },
   helpDescription: {
     fontSize: 15,
-    color: "#64748b",
     textAlign: "center",
     lineHeight: 22,
     marginBottom: 24,
   },
   helpCloseButton: {
-    backgroundColor: "#f1f5f9",
     paddingVertical: 10,
     paddingHorizontal: 30,
     borderRadius: 10,
   },
-  helpCloseText: {
-    color: "#475569",
-    fontWeight: "600",
-  },
+  helpCloseText: { fontWeight: "600" },
 });

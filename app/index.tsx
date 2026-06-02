@@ -1,15 +1,24 @@
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
+import { Colors } from "@/constants/Colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useEffect } from "react";
-import { ActivityIndicator, Image, Platform, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Image,
+  Platform,
+  StyleSheet,
+  View,
+  useColorScheme,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Colors } from "../constants/Colors";
-import { updateServerSettings } from "../mock/userData";
+import { setCurrentLoginId, updateServerSettings } from "../mock/userData";
 import { setCurrentUserId } from "../services/alertManager";
-import { setCurrentLoginId } from "../mock/userData";
 
 export default function SplashScreen() {
   const router = useRouter();
+  const theme = useColorScheme() ?? "light";
 
   useEffect(() => {
     const checkAuthAndRedirect = async () => {
@@ -42,27 +51,33 @@ export default function SplashScreen() {
   }, [router]);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.logoContainer}>
-        <Image
-          source={require("../assets/images/logo.png")}
-          style={styles.logoImage}
-          resizeMode="contain"
-        />
-        <Text style={styles.subtitleText}>VisionMate</Text>
-      </View>
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.light.text} />
-        <Text style={styles.loadingText}>Connecting...</Text>
-      </View>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: Colors[theme].background }]}
+    >
+      <ThemedView style={styles.container}>
+        <View style={styles.logoContainer}>
+          <Image
+            source={require("../assets/images/logo.png")}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
+          <ThemedText style={styles.subtitleText}>VisionMate</ThemedText>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors[theme].text} />
+          <ThemedText style={styles.loadingText}>Connecting...</ThemedText>
+        </View>
+      </ThemedView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: Colors.light.background,
     justifyContent: "space-between",
     alignItems: "center",
     paddingVertical: 60,
@@ -74,15 +89,14 @@ const styles = StyleSheet.create({
     marginTop: 80,
   },
   logoImage: {
-    width: 200,
-    height: 100,
-    marginBottom: 12,
+    width: 280,
+    height: 140,
+    marginBottom: 20,
   },
   subtitleText: {
-    fontSize: 16,
-    color: "#888888",
-    fontWeight: "500",
-    letterSpacing: 1,
+    fontSize: 24,
+    fontWeight: "800",
+    letterSpacing: 1.5,
   },
   loadingContainer: {
     marginBottom: 40,
@@ -91,7 +105,6 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 14,
     fontSize: 14,
-    color: Colors.light.text,
     opacity: 0.7,
     fontWeight: "500",
   },

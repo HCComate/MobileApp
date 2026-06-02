@@ -1,18 +1,21 @@
 import PageHeader from "@/components/PageHeader";
-import { Colors } from "@/constants/Colors";
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
 import apiClient from "@/services/apiClient";
-import { Stack, useFocusEffect } from "expo-router"; // useFocusEffect 추가
-import React, { useCallback, useState } from "react"; // useCallback 추가
+import { Stack, useFocusEffect } from "expo-router";
+import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
+  StatusBar,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
+  useColorScheme,
 } from "react-native";
 import { BarChart, LineChart, PieChart } from "react-native-gifted-charts";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Colors } from "../../../constants/Colors";
 
 interface YearlyStatsResponse {
   target_year: string;
@@ -30,8 +33,9 @@ interface YearlyStatsResponse {
 }
 
 export default function YearlyStatisticsScreen() {
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(true);
   const [data, setData] = useState<YearlyStatsResponse | null>(null);
+  const theme = useColorScheme() ?? "light";
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
     RISK: true,
@@ -51,7 +55,7 @@ export default function YearlyStatisticsScreen() {
       .finally(() => setLoading(false));
   };
 
-  // 페이지에 다시 들어올 때마다(Focus 될 때마다) 데이터를 다시 불러오도록 useFocusEffect 사용
+  // 화면에 포커스될 때마다 fetchStatistics 실행
   useFocusEffect(
     useCallback(() => {
       fetchStatistics();
@@ -64,9 +68,9 @@ export default function YearlyStatisticsScreen() {
 
   if (loading || !data)
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={Colors.light.brandDark} />
-      </View>
+      <ThemedView style={styles.center}>
+        <ActivityIndicator size="large" color={Colors[theme].tint} />
+      </ThemedView>
     );
 
   // 분기별 에러 발생 추이 데이터 변환
@@ -97,8 +101,14 @@ export default function YearlyStatisticsScreen() {
   }));
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "right", "left"]}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: Colors[theme].background }]}
+      edges={["top", "right", "left"]}
+    >
       <Stack.Screen options={{ headerShown: false }} />
+      <StatusBar
+        barStyle={theme === "dark" ? "light-content" : "dark-content"}
+      />
       <PageHeader title={`연간 통계 (${data.target_year}년)`} showBack={true} />
 
       <ScrollView
@@ -106,24 +116,28 @@ export default function YearlyStatisticsScreen() {
         contentContainerStyle={styles.content}
       >
         {/* 심각도 기반 리스크 점수 */}
-        <View style={styles.cardSection}>
+        <ThemedView
+          style={[styles.cardSection, { borderColor: Colors[theme].border }]}
+        >
           <TouchableOpacity
             style={styles.sectionHeader}
             onPress={() => toggleSection("RISK")}
           >
-            <Text style={styles.cardHeaderTitle}>
+            <ThemedText style={styles.sectionTitle}>
               심각도 기반 리스크 종합 점수
-            </Text>
-            <Text style={styles.arrow}>{expanded.RISK ? "▲" : "▼"}</Text>
+            </ThemedText>
+            <ThemedText style={styles.arrow}>
+              {expanded.RISK ? "▲" : "▼"}
+            </ThemedText>
           </TouchableOpacity>
           {expanded.RISK && (
             <View style={styles.riskCardContent}>
-              <Text style={styles.riskValue}>
+              <ThemedText style={styles.riskValue}>
                 {data.risk_score.toLocaleString()} 점
-              </Text>
+              </ThemedText>
             </View>
           )}
-        </View>
+        </ThemedView>
 
         {/* 차트 섹션들 */}
         {[
@@ -158,13 +172,18 @@ export default function YearlyStatisticsScreen() {
             type: "line",
           },
         ].map((item, index) => (
-          <View style={styles.section} key={index}>
+          <ThemedView
+            style={[styles.section, { borderColor: Colors[theme].border }]}
+            key={index}
+          >
             <TouchableOpacity
               style={styles.sectionHeader}
               onPress={() => toggleSection(item.key)}
             >
-              <Text style={styles.sectionTitle}>{item.title}</Text>
-              <Text style={styles.arrow}>{expanded[item.key] ? "▲" : "▼"}</Text>
+              <ThemedText style={styles.sectionTitle}>{item.title}</ThemedText>
+              <ThemedText style={styles.arrow}>
+                {expanded[item.key] ? "▲" : "▼"}
+              </ThemedText>
             </TouchableOpacity>
             {expanded[item.key] && (
               <View style={styles.chartHolder}>
@@ -172,7 +191,9 @@ export default function YearlyStatisticsScreen() {
                   <BarChart
                     data={item.data}
                     barWidth={35}
-                    frontColor={Colors.light.brandDark}
+                    frontColor={Colors[theme].tint}
+                    xAxisLabelTextStyle={{ color: Colors[theme].text }}
+                    yAxisTextStyle={{ color: Colors[theme].text }}
                   />
                 )}
                 {item.type === "pie" && (
@@ -187,11 +208,18 @@ export default function YearlyStatisticsScreen() {
                   />
                 )}
                 {item.type === "line" && (
-                  <LineChart data={item.data} thickness={3} />
+                  <LineChart
+                    data={item.data}
+                    thickness={3}
+                    color={Colors[theme].tint}
+                    dataPointsColor={Colors[theme].text}
+                    yAxisTextStyle={{ color: Colors[theme].text }}
+                    xAxisLabelTextStyle={{ color: Colors[theme].text }}
+                  />
                 )}
               </View>
             )}
-          </View>
+          </ThemedView>
         ))}
       </ScrollView>
     </SafeAreaView>
@@ -199,37 +227,25 @@ export default function YearlyStatisticsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: Colors.light.background },
+  safeArea: { flex: 1 },
   container: { flex: 1 },
   content: { padding: 16 },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   cardSection: {
-    backgroundColor: "#FFFFFF",
     borderRadius: 14,
     padding: 16,
     marginBottom: 12,
-    elevation: 0,
     borderWidth: 1,
-    borderColor: "#E1E4E8",
   },
-  cardHeaderTitle: { fontSize: 13, fontWeight: "700", color: "#2F3542" },
-  riskCardContent: { alignItems: "center", marginTop: 10 },
-  riskValue: { color: "#2F3542", fontSize: 24, fontWeight: "bold" },
-  section: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 12,
-    elevation: 0,
-    borderWidth: 1,
-    borderColor: "#E1E4E8",
-  },
+  section: { borderRadius: 14, padding: 16, marginBottom: 12, borderWidth: 1 },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  sectionTitle: { fontSize: 13, fontWeight: "700", color: "#2F3542" },
-  arrow: { fontSize: 12, color: "#A4B0BE" },
+  sectionTitle: { fontSize: 13, fontWeight: "700" },
+  arrow: { fontSize: 12 },
+  riskCardContent: { alignItems: "center", marginTop: 10 },
+  riskValue: { fontSize: 24, fontWeight: "bold" },
   chartHolder: { alignItems: "center", marginTop: 15 },
 });

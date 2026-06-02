@@ -1,3 +1,4 @@
+import { ThemedText } from "@/components/themed-text";
 import Constants from "expo-constants";
 import { Href, Stack, useRouter } from "expo-router";
 import React from "react";
@@ -5,9 +6,9 @@ import {
   Dimensions,
   ScrollView,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
+  useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import PageHeader from "../../../components/PageHeader";
@@ -18,6 +19,8 @@ const { height } = Dimensions.get("window");
 export default function LogMainMenu() {
   // 라우터 설정
   const router = useRouter();
+  const theme = useColorScheme() ?? "light";
+
   // 앱 버전
   const appVersion = Constants.expoConfig?.version || "1.0.0";
   // 현재 날짜와 시간
@@ -39,7 +42,10 @@ export default function LogMainMenu() {
   ];
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "right", "left"]}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: Colors[theme].background }]}
+      edges={["top", "right", "left"]}
+    >
       {/* 기본 상단바 숨기기 설정 */}
       <Stack.Screen options={{ headerShown: false }} />
       <PageHeader title="장비 로그 보기" showBack={true} />
@@ -53,23 +59,30 @@ export default function LogMainMenu() {
           {LOG_MENUS.map((menu, index) => (
             <TouchableOpacity
               key={index}
-              style={styles.menuButton}
+              style={[
+                styles.menuButton,
+                { backgroundColor: theme === "dark" ? "#374151" : "#4A4A6A" },
+              ]}
               onPress={() => router.push(menu.path)}
               activeOpacity={0.7}
             >
-              <Text style={[styles.arrowText, { opacity: 0 }]}>›</Text>
-              <Text style={styles.menuText}>{menu.title}</Text>
-              <Text style={styles.arrowText}>›</Text>
+              <ThemedText style={[styles.arrowText, { opacity: 0 }]}>
+                ›
+              </ThemedText>
+              <ThemedText style={styles.menuText}>{menu.title}</ThemedText>
+              <ThemedText style={styles.arrowText}>›</ThemedText>
             </TouchableOpacity>
           ))}
         </View>
 
         {/* 하단 정보 영역 */}
         <View style={styles.footerInfo}>
-          <View style={styles.divider} />
-          <Text style={styles.versionText}>
+          <View
+            style={[styles.divider, { backgroundColor: Colors[theme].border }]}
+          />
+          <ThemedText style={styles.versionText}>
             VisionMate v{appVersion} - Last Updated: {currentTime}
-          </Text>
+          </ThemedText>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -77,17 +90,23 @@ export default function LogMainMenu() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: Colors.light.background },
+  safeArea: { flex: 1 },
+
   container: { flex: 1 },
+
   contentContainer: {
-    paddingTop: 20,
+    paddingTop: 30,
     paddingBottom: 40,
     minHeight: height * 0.8,
   },
-  menuGrid: { paddingHorizontal: 20, gap: 15 },
+
+  menuGrid: {
+    paddingHorizontal: 20,
+    gap: 25,
+  },
+
   menuButton: {
-    backgroundColor: "#4A4A6A",
-    paddingVertical: 22,
+    paddingVertical: 25,
     paddingHorizontal: 20,
     borderRadius: 12,
     flexDirection: "row",
@@ -99,6 +118,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
+
   menuText: {
     fontSize: 18,
     fontWeight: "600",
@@ -106,26 +126,29 @@ const styles = StyleSheet.create({
     textAlign: "center",
     flex: 1,
   },
+
   arrowText: {
     fontSize: 24,
     color: "rgba(255, 255, 255, 0.4)",
     fontWeight: "300",
     width: 20,
   },
+
   footerInfo: {
     marginTop: 40,
     paddingHorizontal: 30,
     alignItems: "center",
   },
+
   divider: {
     width: 40,
     height: 2,
-    backgroundColor: "#DDD",
     marginVertical: 15,
   },
+
   versionText: {
     fontSize: 12,
-    color: "#AAA",
     textAlign: "center",
+    opacity: 0.6,
   },
 });
