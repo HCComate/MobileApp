@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors } from "../constants/Colors";
-import { WORKER_IMAGES } from "../constants/workerImages";
+import { getWorkerImage } from "../constants/image";
 import apiClient from "../services/apiClient";
 
 export default function ManagementScreen() {
@@ -33,11 +33,11 @@ export default function ManagementScreen() {
     try {
       const response = await apiClient.get("/api/users");
 
-      // MobileServer: ApiResponse 래퍼 { success, data } 또는 배열 직접 반환
       const raw = response.data?.data ?? response.data;
       const list = Array.isArray(raw) ? raw : [];
       const mappedWorkers = list.map((user: any) => ({
-        id: user.userId || "N/A",
+        id: user.id || "N/A",
+        username: user.username || user.userId || "N/A",
         name: user.name || "이름없음",
         role: user.role || "UNKNOWN",
         status: user.shiftStatus === "ON_DUTY" ? "근무 중" : "퇴근",
@@ -63,8 +63,8 @@ export default function ManagementScreen() {
     }
   };
 
-  const renderWorkerItem = ({ item, index }: { item: any; index: number }) => {
-    const imageSource = WORKER_IMAGES[index + 1];
+  const renderWorkerItem = ({ item }: { item: any }) => {
+    const imageSource = getWorkerImage(item.username);
 
     return (
       <View style={styles.workerItem}>
@@ -90,7 +90,7 @@ export default function ManagementScreen() {
         </View>
         <View style={styles.workerInfo}>
           <ThemedText style={styles.workerName}>
-            {item.name}({item.id})
+            {item.name}({item.username})
           </ThemedText>
           <ThemedText
             style={{
@@ -143,7 +143,7 @@ export default function ManagementScreen() {
         ) : (
           <FlatList
             data={workers}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item) => item.username}
             renderItem={renderWorkerItem}
             contentContainerStyle={styles.listContainer}
             ItemSeparatorComponent={() => (
