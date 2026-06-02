@@ -62,14 +62,14 @@ const styles = StyleSheet.create({
     marginTop: 80,
   },
   logoImage: {
-    width: 200,
-    height: 100,
-    marginBottom: 12,
+    width: 280,
+    height: 140,
+    marginBottom: 20,
   },
   subtitleText: {
-    fontSize: 16,
-    fontWeight: "500",
-    letterSpacing: 1,
+    fontSize: 24,
+    fontWeight: "800",
+    letterSpacing: 1.5,
   },
   loadingContainer: {
     marginBottom: 40,

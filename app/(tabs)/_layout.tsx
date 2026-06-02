@@ -3,6 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Notifications from "expo-notifications";
 import { Tabs } from "expo-router";
 import React, { useEffect } from "react";
+import { useColorScheme } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AlertModal from "../../components/AlertModal";
 import {
@@ -13,6 +14,9 @@ import { startLogListener, stopLogListener } from "../../services/logListener";
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
+  const theme = useColorScheme() ?? "light";
+  const isDark = theme === "dark";
+
   useEffect(() => {
     // 1. 알림 핸들러 설정
     Notifications.setNotificationHandler({
@@ -76,13 +80,14 @@ export default function TabLayout() {
       {/* <LastErrorBanner /> */}
       <Tabs
         screenOptions={{
-          tabBarActiveTintColor: Colors.light.tint,
-          tabBarInactiveTintColor: Colors.light.tint,
+          // 라이트 모드 시 기존 색상(tint) 유지, 다크 모드 시 흰색으로 고정
+          tabBarActiveTintColor: isDark ? "#FFFFFF" : Colors.light.tint,
+          tabBarInactiveTintColor: isDark ? "#FFFFFF" : Colors.light.tint,
           headerShown: false,
           tabBarStyle: {
-            backgroundColor: "#FFFFFF",
+            backgroundColor: isDark ? "#1e293b" : "#FFFFFF",
             borderTopWidth: 1,
-            borderTopColor: "#F0F0F0",
+            borderTopColor: isDark ? "#334155" : "#F0F0F0",
             height: 60 + (insets.bottom > 0 ? insets.bottom : 15),
             paddingBottom: insets.bottom > 0 ? insets.bottom : 10,
             paddingTop: 10,
