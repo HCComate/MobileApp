@@ -2,6 +2,7 @@ import Header from "@/components/Header";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { Colors } from "@/constants/Colors";
+import { getWorkerImage } from "@/constants/image";
 import { CURRENT_LOGIN_ID, MOCK_USER_LIST } from "@/mock/userData";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -10,6 +11,7 @@ import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   Alert,
+  Image,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -25,7 +27,6 @@ export default function MyPageScreen() {
   const router = useRouter();
   const theme = useColorScheme() ?? "light";
 
-  // 현재 로그인된 사용자 정보 로드
   const currentUser =
     MOCK_USER_LIST.find((user) => user.loginId === CURRENT_LOGIN_ID) ||
     MOCK_USER_LIST[0];
@@ -35,11 +36,9 @@ export default function MyPageScreen() {
     currentUser.serverSettings.interval,
   );
 
-  // AsyncStorage에서 가져온 값을 저장할 상태
   const [serverIp, setServerIp] = useState("");
   const [serverPort, setServerPort] = useState("");
 
-  // 로그인 시 저장한 서버 정보 불러오기
   useEffect(() => {
     const loadSettings = async () => {
       const savedIp = await AsyncStorage.getItem("serverIp");
@@ -78,6 +77,8 @@ export default function MyPageScreen() {
     });
   };
 
+  const imageSource = getWorkerImage(currentUser.loginId);
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: Colors[theme].background }]}
@@ -88,10 +89,17 @@ export default function MyPageScreen() {
       />
       <Header />
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* 사용자 정보 섹션 */}
         <ThemedView style={styles.profileSection}>
-          <View style={styles.avatarContainer}>
-            <MaterialCommunityIcons name="account" size={60} color="#3055C1" />
+          <View style={[styles.avatarContainer, { overflow: "hidden" }]}>
+            {imageSource ? (
+              <Image source={imageSource} style={{ width: 80, height: 80 }} />
+            ) : (
+              <MaterialCommunityIcons
+                name="account"
+                size={60}
+                color="#3055C1"
+              />
+            )}
           </View>
           <View style={styles.profileInfo}>
             <ThemedText style={styles.userName}>
@@ -104,7 +112,6 @@ export default function MyPageScreen() {
           </View>
         </ThemedView>
 
-        {/* 서버 설정 섹션 */}
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>서버 설정</ThemedText>
           <ThemedView
@@ -141,7 +148,6 @@ export default function MyPageScreen() {
           </ThemedView>
         </View>
 
-        {/* 알림 설정 섹션 */}
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>알림 설정</ThemedText>
           <ThemedView
@@ -193,7 +199,6 @@ export default function MyPageScreen() {
           </ThemedView>
         </View>
 
-        {/* 관리 메뉴 섹션 */}
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>관리 메뉴</ThemedText>
           <ThemedView
@@ -231,7 +236,6 @@ export default function MyPageScreen() {
           </ThemedView>
         </View>
 
-        {/* 하단 버튼 그룹 */}
         <View style={styles.buttonGroup}>
           <TouchableOpacity
             style={styles.saveButton}
