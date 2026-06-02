@@ -23,8 +23,8 @@ export default function DeviceDetailLogScreen() {
   }, [logs, deviceId]);
 
   const getStatusStyle = (item: RawLog) => {
-    const info = item.body.status_info[0];
-    const msg = info.msg.toLowerCase();
+    const info = item.body.status_info?.[0];
+    const msg = (info?.msg ?? "").toLowerCase();
     if (msg.includes("recovery") || msg.includes("success")) {
       return { backgroundColor: "#3055C1", textColor: "#FFFFFF" };
     }
@@ -39,8 +39,9 @@ export default function DeviceDetailLogScreen() {
 
   const renderLogItem = ({ item }: { item: RawLog }) => {
     const style = getStatusStyle(item);
-    const ts = item.body.timestamp.replace("T", " ").split(".")[0];
-    const [date, time] = ts.split(" ");
+    const ts = (item.body.timestamp ?? "").replace("T", " ").split(".")[0];
+    const [date = "-", time = "-"] = ts.split(" ");
+    const msg = item.body.status_info?.[0]?.msg ?? "-";
     return (
       <View
         style={[
@@ -62,7 +63,7 @@ export default function DeviceDetailLogScreen() {
 
         <View style={LogStyles.msgCell}>
           <Text style={[LogStyles.cellText, { color: style.textColor }]}>
-            {item.body.status_info[0].msg}
+            {msg}
           </Text>
         </View>
       </View>

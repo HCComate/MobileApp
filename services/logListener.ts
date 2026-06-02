@@ -27,32 +27,32 @@ export async function startLogListener() {
 
   const { CURRENT_SERVER_URL } = await import("../mock/userData");
   console.log("[logListener] 연결 대상 서버:", CURRENT_SERVER_URL);
-  console.log("[logListener] startLogListener called (Server Polling Mode)");
 
-  // 초기 사용자 목록 로드
   await refreshUsers();
-
-  // 30초마다 사용자 목록 갱신 (shiftStatus/workStatus 변화 반영)
   userRefreshInterval = setInterval(refreshUsers, 30_000);
 
+  // 중복 발화 방지는 alertManager의 activeDeviceAlerts(장치 단위)가 담당.
+  // seenAlertIds를 쓰지 않으므로, 거절 후 재에스컬레이션으로 돌아와도 다시 알림 가능.
   pollInterval = setInterval(async () => {
     try {
       const response = await apiClient.get("/api/alerts/pending");
-      const pendingAlerts = response.data.data || [];
+      const pendingAlerts: any[] = response.data.data || [];
 
-      if (pendingAlerts.length > 0) {
-        pendingAlerts.forEach((alert: any) => {
-          const alertEvent: AlertEvent = {
-            alertId: String(alert.alertId),
-            deviceId: alert.deviceId,
-            errorCode: alert.errorCode || "ERROR",
-            errorMsg: alert.errorMsg || "장비 오류 발생",
-            severity: alert.severity || "MEDIUM",
-            timestamp: alert.timestamp || new Date().toISOString(),
-          };
-          handleAlertEvent(alertEvent, cachedUsers);
-        });
-      }
+      pendingAlerts.forEach((alert: any) => {
+        const alertId = String(alert.alertId ?? alert.id ?? `srv_${alert.deviceId}`);
+
+        const alertEvent: AlertEvent = {
+          alertId,
+          deviceId: alert.deviceId,
+          errorCode: alert.errorCode || "ERROR",
+          errorMsg: alert.errorMsg || "장비 오류 발생",
+          severity: alert.severity || "CRITICAL",
+          timestamp: alert.timestamp || alert.createdAt || new Date().toISOString(),
+        };
+        // activeDeviceAlerts가 같은 장치 활성 알람 중복을 막음
+        // (현재 current_target인 동안 반복 폴링돼도 1회만 팝업)
+        handleAlertEvent(alertEvent, cachedUsers, true);
+      });
     } catch (error) {
       // 서버 연결 실패 시 조용히 넘어갑니다.
     }

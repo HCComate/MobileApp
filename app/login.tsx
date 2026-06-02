@@ -8,6 +8,7 @@ import {
   Alert,
   Button,
   Image,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -25,7 +26,8 @@ export default function LoginScreen() {
   const router = useRouter();
   const [id, setId] = useState("");
   const [password, setPassword] = useState("");
-  const [serverIp, setServerIp] = useState("localhost");
+  // Android 에뮬레이터에서 호스트 PC는 10.0.2.2, iOS/Web은 localhost
+  const [serverIp, setServerIp] = useState(Platform.OS === "android" ? "10.0.2.2" : "localhost");
   const [serverPort, setServerPort] = useState("8080");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -60,14 +62,20 @@ export default function LoginScreen() {
 
       if (token) {
         await AsyncStorage.setItem("userToken", token);
+        console.log("[Login] ✓ 토큰 저장 완료:", token.substring(0, 30) + "...");
+        
         await AsyncStorage.setItem("serverIp", trimmedIp);
         await AsyncStorage.setItem("serverPort", trimmedPort);
+        await AsyncStorage.setItem("userId", userId);
+        console.log("[Login] ✓ 서버 설정 저장:", `${trimmedIp}:${trimmedPort}`);
+
         updateServerSettings(trimmedIp, trimmedPort, true);
         setCurrentLoginId(userId);
         setCurrentUserId(userId);
         Alert.alert("로그인 성공", `${name}님, 환영합니다!`);
         router.replace("/(tabs)");
       } else {
+        console.error("[Login] ❌ 토큰 없음 - 서버 응답:", loginData);
         Alert.alert("로그인 실패", "서버 응답 형식이 올바르지 않습니다.");
       }
     } catch (error: any) {

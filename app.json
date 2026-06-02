@@ -20,7 +20,8 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.MobileApp"
+      "package": "com.mobileapp",
+      "usesCleartextTraffic": true
     },
     "web": {
       "output": "static",

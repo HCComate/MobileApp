@@ -1,5 +1,5 @@
 import { Stack, useRouter } from "expo-router";
-import React, { useMemo } from "react";
+import React from "react";
 import {
   Dimensions,
   FlatList,
@@ -12,7 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import DeviceIcon from "../../../components/DeviceIcon";
 import Header from "../../../components/Header";
 import PageHeader from "../../../components/PageHeader";
-import { generateMockSummaries } from "../../../mock/deviceMocks";
+import { useDeviceData } from "../../../hooks/updateData";
 import { PageStyles } from "../../../styles/PageStyles";
 import { DeviceSummary } from "../../../types/equipment";
 
@@ -22,8 +22,7 @@ const ITEM_SIZE = (width - 40) / COLUMN_COUNT;
 
 export default function DeviceLogScreen() {
   const router = useRouter();
-
-  const devices = useMemo(() => generateMockSummaries(), []);
+  const devices = useDeviceData();
 
   const renderDeviceItem = ({ item }: { item: DeviceSummary }) => (
     <TouchableOpacity
@@ -52,7 +51,6 @@ export default function DeviceLogScreen() {
 
   return (
     <SafeAreaView style={PageStyles.safeArea} edges={["top", "right", "left"]}>
-      {/* 중복 헤더 방지 */}
       <Stack.Screen options={{ headerShown: false }} />
 
       <Header />

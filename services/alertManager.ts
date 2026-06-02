@@ -44,6 +44,10 @@ const alertHistory: ActiveAlert[] = [];
 const escalationTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const policyCache = new Map<string, EscalationPolicy>();
 
+// 장치별 활성 알람 추적 (중복 방지용)
+// deviceId → alertId: 같은 장치에서 이미 알람이 활성화 중이면 추가 알람 차단
+const activeDeviceAlerts = new Map<string, string>();
+
 // 알람 상태 변경 구독
 type AlertChangeListener = () => void;
 const changeListeners = new Set<AlertChangeListener>();
@@ -63,14 +67,26 @@ function notifyAlertChanges() {
 export async function handleAlertEvent(
   event: AlertEvent,
   allUsers: AlertUser[],
+  isServerEscalation = false,
 ) {
+  // 1. 동일 alertId 중복 차단
   if (activeAlerts.has(event.alertId)) return;
 
-  const policy = buildEscalationPolicy(event, allUsers);
+  // 2. 동일 장치 활성 알람 중복 차단 (경로 무관)
+  if (activeDeviceAlerts.has(event.deviceId)) {
+    console.log(`[AlertManager] 중복 알람 차단: ${event.deviceId} (이미 활성 알람 존재)`);
+    return;
+  }
+
+  // 🔑 서버 에스컬레이션인 경우, 로컬 에스컬레이션 정책을 생성하지 않음
+  //    (서버의 escalation_sessions를 신뢰)
+  const policy = isServerEscalation 
+    ? { severity: event.severity, steps: [] }  // 빈 정책 (팝업만 표시)
+    : buildEscalationPolicy(event, allUsers);
+  
   policyCache.set(event.alertId, policy);
 
   const firstStep = policy.steps[0];
-  if (!firstStep) return;
 
   const newActiveAlert: ActiveAlert = {
     alertEvent: event,
@@ -84,10 +100,22 @@ export async function handleAlertEvent(
 
   // 2. 팝업 및 에스컬레이션 처리
   activeAlerts.set(event.alertId, newActiveAlert);
-  await sendStepNotification(event, firstStep);
-  startEscalationTimer(event.alertId, firstStep.timeoutSec, allUsers);
+  activeDeviceAlerts.set(event.deviceId, event.alertId);
+  
+  // 🔑 팝업은 항상 표시 (서버/로컬 에스컬레이션 상관없음)
+  await sendStepNotification(event, firstStep || {
+    stepIndex: 0,
+    targetUser: { userId: currentUserId || "", workStatus: "IDLE", role: "OPERATOR", assignedDevices: [], shiftStatus: "ON_DUTY" },
+    timeoutSec: 20,
+  });
+  
+  // 🔑 로컬 에스컬레이션만 타이머 시작
+  if (!isServerEscalation && firstStep) {
+    startEscalationTimer(event.alertId, firstStep.timeoutSec, allUsers);
+  }
+  
   console.log(
-    `[AlertManager] 알람 활성화: ${event.deviceId} (${event.severity})`,
+    `[AlertManager] 알람 활성화: ${event.deviceId} (${event.severity}, 서버 에스컬: ${isServerEscalation})`,
   );
 }
 
@@ -114,6 +142,7 @@ async function sendStepNotification(event: AlertEvent, step: EscalationStep) {
       body: `${event.deviceId} - ${event.errorCode}: ${event.errorMsg}`,
       data: { ...event, screen: "DeviceDetail" },
       sound: "default",
+      categoryIdentifier: "ALERT_ACTIONS", // 배너에 수락/거절 버튼 표시
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
@@ -173,49 +202,45 @@ export async function respondToAlert(
   alertId: string,
   response: AlertResponse,
   allUsers: AlertUser[],
+  deviceId?: string,
 ) {
   const active = activeAlerts.get(alertId);
-  if (!active) return;
 
-  clearEscalationTimer(alertId);
-  active.response = response;
+  // deviceId 우선순위: 명시 인자 > 활성 알람의 deviceId
+  const resolvedDeviceId = deviceId ?? active?.alertEvent.deviceId ?? "";
 
-  try {
-    if (response === "ACCEPTED") {
-      active.respondedBy = currentUserId;
-      active.acceptedBy = currentUserId; // 알람을 수락한 사용자 ID 저장
-      activeAlerts.set(alertId, active);
-
-      // 서버에 수락 응답 전송
-      await apiClient.post(`/api/alerts/${alertId}/respond`, {
-        response: "ACCEPTED",
-        userId: currentUserId,
-      });
-      console.log(`[API Success] 알림 ${alertId} 수락 응답 전송 완료`);
-      notifyAlertChanges();
-    } else {
-      activeAlerts.set(alertId, active);
-      await escalateAlert(alertId, "REJECTED", allUsers);
-
-      // 서버에 거절 응답 전송
-      await apiClient.post(`/api/alerts/${alertId}/respond`, {
-        response: "REJECTED",
-        userId: currentUserId,
-      });
-      console.log(`[API Success] 알림 ${alertId} 거절 응답 전송 완료`);
-    }
-  } catch (error) {
-    console.error(`[API Error] 알림 ${alertId} 응답 전송 실패:`, error);
-    // 서버 통신 실패 시에도 앱 내부 로직은 유지
+  if (!active) {
+    console.warn(`[AlertManager] respondToAlert: alertId(${alertId}) not in activeAlerts — 서버에만 전송`);
+  } else {
+    clearEscalationTimer(alertId);
+    active.response = response;
     if (response === "ACCEPTED") {
       active.respondedBy = currentUserId;
       active.acceptedBy = currentUserId;
-      activeAlerts.set(alertId, active);
-      notifyAlertChanges();
-    } else {
-      activeAlerts.set(alertId, active);
-      await escalateAlert(alertId, "REJECTED", allUsers);
     }
+    activeAlerts.set(alertId, active);
+  }
+
+  // 서버 응답 전송 — active 여부와 무관하게 항상 실행
+  // deviceId를 명시 전송해 MobileServer의 alertId 파싱 오류(언더스코어 포함 ID) 방지
+  try {
+    await apiClient.post(`/api/alerts/${alertId}/respond`, {
+      response,
+      userId: currentUserId,
+      deviceId: resolvedDeviceId,
+    });
+    console.log(`[AlertManager] 서버 응답 전송 성공: ${alertId} (device=${resolvedDeviceId}) → ${response}`);
+  } catch (error) {
+    console.error(`[AlertManager] 서버 응답 전송 실패: ${alertId}`, error);
+  }
+
+  if (response === "ACCEPTED") {
+    notifyAlertChanges();
+  } else {
+    // 거절: 서버가 다음 담당자로 에스컬레이션함.
+    // 로컬 알람 상태를 완전히 제거 → 재에스컬레이션으로 돌아오면 다시 표시 가능
+    resolveAlert(alertId);
+    notifyAlertChanges();
   }
 }
 
@@ -232,6 +257,10 @@ export function getAllAlertHistory(): ActiveAlert[] {
 
 export function resolveAlert(alertId: string) {
   clearEscalationTimer(alertId);
+  const alert = activeAlerts.get(alertId);
+  if (alert) {
+    activeDeviceAlerts.delete(alert.alertEvent.deviceId);
+  }
   activeAlerts.delete(alertId);
 }
 

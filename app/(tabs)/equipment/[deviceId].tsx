@@ -43,34 +43,25 @@ export default function DeviceDetailScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [serverDevice, setServerDevice] = useState<DeviceDetail | null>(null);
 
-  // 1. 서버 데이터 fetch 로직 (사용자 제안 디버깅 로그 포함)
+  // 1. 서버 데이터 fetch + 5초 폴링
   useEffect(() => {
-    console.log("상세 페이지 진입 - 장비 ID:", deviceId);
+    if (!deviceId) return;
 
     const fetchDetail = async () => {
-      if (!deviceId) return;
-      
       try {
-        console.log("데이터 요청 시작 (URL: /api/devices/" + deviceId + "/detail)...");
-        // 주의: 분석 결과 서버 경로는 /api/devices/{id}/detail 입니다.
         const response = await apiClient.get(`/api/devices/${deviceId}/detail`);
-        
-        console.log("데이터 수신 성공 (Raw):", response.data);
-        
-        // MobileServer는 ApiResponse 래퍼를 사용하므로 response.data.data를 확인해야 함
         const actualData = response.data.success ? response.data.data : response.data;
-        console.log("실제 데이터 추출:", actualData);
-        
-        setServerDevice(actualData);
+        if (actualData) setServerDevice(actualData);
       } catch (error: any) {
-        console.error("데이터 요청 실패:", error);
-        console.error("에러 상세:", error.response?.data || error.message);
+        console.error("장비 상세 데이터 요청 실패:", error.response?.data || error.message);
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchDetail();
+    const interval = setInterval(fetchDetail, 5000);
+    return () => clearInterval(interval);
   }, [deviceId]);
 
   // 2. 알림 해결 버튼 권한 체크
@@ -209,14 +200,14 @@ export default function DeviceDetailScreen() {
         <View style={styles.infoCard}>
           <Text style={styles.cardTitle}>센서 데이터</Text>
           <View style={styles.divider} />
-          <InfoRow label="온도" value={`${detail.temperature.toFixed(1)}°C`} />
+          <InfoRow label="온도" value={`${(detail.temperature ?? 0).toFixed(1)}°C`} />
           <InfoRow
             label="진동 (X/Y)"
-            value={`${detail.vibrationX.toFixed(2)} / ${detail.vibrationY.toFixed(2)}`}
+            value={`${(detail.vibrationX ?? 0).toFixed(2)} / ${(detail.vibrationY ?? 0).toFixed(2)}`}
           />
           <InfoRow
             label="조도"
-            value={`${detail.illumination.toFixed(3)} lux`}
+            value={`${(detail.illumination ?? 0).toFixed(3)} lux`}
           />
           <InfoRow label="습도" value={`${(detail.humidity ?? 0).toFixed(3)} %`} />
         </View>

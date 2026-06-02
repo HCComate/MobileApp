@@ -12,15 +12,14 @@ import { PageStyles } from "../../../styles/PageStyles";
 export default function EventLogScreen() {
   const logs = useLogData();
   // 정상인 로그 아닌 것만 필터링
-  const eventLogs = logs.filter(
-    (item) =>
-      item.body.status_info[0].code !== "NORMAL" &&
-      item.body.status_info[0].code !== "SV-VS-PR-00",
-  );
+  const eventLogs = logs.filter((item) => {
+    const code = item.body.status_info?.[0]?.code;
+    return code !== undefined && code !== "NORMAL" && code !== "SV-VS-PR-00";
+  });
 
   const getStatusStyle = (item: RawLog) => {
-    const info = item.body.status_info[0];
-    const msg = info.msg.toLowerCase();
+    const info = item.body.status_info?.[0];
+    const msg = (info?.msg ?? "").toLowerCase();
 
     if (
       msg.includes("recovery") ||
@@ -42,9 +41,9 @@ export default function EventLogScreen() {
 
   const renderLogItem = ({ item }: { item: RawLog }) => {
     const style = getStatusStyle(item);
-    const info = item.body.status_info[0];
-    const ts = item.body.timestamp.replace("T", " ").split(".")[0];
-    const [date, time] = ts.split(" ");
+    const info = item.body.status_info?.[0] ?? { msg: "-", severity: "LOW", code: "" };
+    const ts = (item.body.timestamp ?? "").replace("T", " ").split(".")[0];
+    const [date = "-", time = "-"] = ts.split(" ");
 
     return (
       <View

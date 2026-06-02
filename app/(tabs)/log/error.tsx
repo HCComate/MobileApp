@@ -17,9 +17,9 @@ export default function ErrorLogScreen() {
   );
 
   const renderLogItem = ({ item }: { item: RawLog }) => {
-    const info = item.body.status_info[0];
-    const ts = item.body.timestamp.replace("T", " ").split(".")[0];
-    const [date, time] = ts.split(" ");
+    const info = item.body.status_info?.[0] ?? { msg: "오류 발생" };
+    const ts = (item.body.timestamp ?? "").replace("T", " ").split(".")[0];
+    const [date = "-", time = "-"] = ts.split(" ");
 
     return (
       <View style={[LogStyles.logRow, styles.errorRow]}>

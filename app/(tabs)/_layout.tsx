@@ -9,7 +9,8 @@ import {
   startForegroundService,
   stopForegroundService,
 } from "../../services/foregroundService";
-import { startLogListener, stopLogListener } from "../../services/logListener";
+import { startLogListener, stopLogListener, getCachedUsers } from "../../services/logListener";
+import { respondToAlert } from "../../services/alertManager";
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
@@ -47,12 +48,23 @@ export default function TabLayout() {
     };
     initService();
     const responseListener =
-      Notifications.addNotificationResponseReceivedListener((response) => {
-        console.log("[notification] response received:", response);
-        // response.actionIdentifier 또는 response.notification.request.content.data로
-        // 네비게이션 여부를 판단하거나 무시하도록 처리할 수 있습니다. 개발 모드에서는
-        // 알림 탭 시 앱이 포그라운드로 복귀하면서 다시 로드되는 경우가 있으니 추가 재로딩
-        // 로직은 여기서 피하도록 설계하세요.
+      Notifications.addNotificationResponseReceivedListener(async (response) => {
+        const actionId = response.actionIdentifier;
+        const data = response.notification.request.content.data as any;
+        const alertId = data?.alertId;
+        const deviceId = data?.deviceId;
+
+        console.log("[notification] response:", actionId, "alertId:", alertId, "device:", deviceId);
+
+        if (!alertId) return;
+
+        // 알림 배너의 수락/거절 버튼 처리
+        if (actionId === "ACCEPT") {
+          await respondToAlert(alertId, "ACCEPTED", getCachedUsers(), deviceId);
+        } else if (actionId === "REJECT") {
+          await respondToAlert(alertId, "REJECTED", getCachedUsers(), deviceId);
+        }
+        // 기본 탭(배너 클릭)은 단순 앱 포그라운드 복귀
       });
 
     const receivedListener = Notifications.addNotificationReceivedListener(
