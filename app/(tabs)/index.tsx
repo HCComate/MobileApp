@@ -85,7 +85,7 @@ export default function HomeScreen() {
         <InfoBanner text="VisionMate에 오신걸 환영합니다." />
 
         <View style={styles.calendarContainer}>
-          <CalendarView selectedDate={calendarDate} />
+          <CalendarView key={theme} selectedDate={calendarDate} />
         </View>
 
         {/* 달력과 버튼 사이를 유연하게 채워주는 빈 공간 */}

@@ -67,6 +67,7 @@ export default function ScheduleScreen() {
 
         <View style={styles.calendarSection}>
           <CalendarView
+            key={colorScheme}
             selectedDate={selectedDate}
             onDateSelect={(date: string) => setSelectedDate(date)}
           />
