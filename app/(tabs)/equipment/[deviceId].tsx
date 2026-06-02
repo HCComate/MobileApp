@@ -185,7 +185,7 @@ export default function DeviceDetailScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <StatusBar
         barStyle={theme === "dark" ? "light-content" : "dark-content"}
-        backgroundColor={EQ_COLORS.headerBg}
+        backgroundColor={Colors[theme].background}
       />
       <Header />
       <ThemedView style={{ flex: 1 }}>
@@ -313,6 +313,7 @@ export default function DeviceDetailScreen() {
   );
 }
 
+// 수정된 InfoRow 컴포넌트
 const InfoRow = ({
   label,
   value,
@@ -321,14 +322,22 @@ const InfoRow = ({
   label: string;
   value: string;
   valueColor?: string;
-}) => (
-  <View style={styles.infoRow}>
-    <ThemedText style={styles.infoLabel}>{label}</ThemedText>
-    <ThemedText style={[styles.infoValue, { color: valueColor || undefined }]}>
-      {value}
-    </ThemedText>
-  </View>
-);
+}) => {
+  // 컴포넌트 내부에서useColorScheme을 호출하여 테마 상태를 가져옵니다.
+  const currentTheme = useColorScheme() ?? "light";
+  const textColor = Colors[currentTheme].text;
+
+  return (
+    <View style={styles.infoRow}>
+      <ThemedText style={[styles.infoLabel, { color: textColor }]}>
+        {label}
+      </ThemedText>
+      <ThemedText style={[styles.infoValue, { color: valueColor || textColor }]}>
+        {value}
+      </ThemedText>
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
   loadingContainer: {

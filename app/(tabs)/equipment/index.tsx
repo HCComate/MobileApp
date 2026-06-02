@@ -12,7 +12,6 @@ import {
   useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Colors } from "../../../constants/Colors";
 import {
   EQ_COLORS,
   SEVERITY_COLOR,
@@ -22,6 +21,7 @@ import {
 import { useDeviceData } from "../../../hooks/updateData";
 import { deviceStore } from "../../../store/deviceStore";
 import { DeviceSummary } from "../../../types/equipment";
+import { Colors } from "@/constants/Colors";
 
 const { width: SW } = Dimensions.get("window");
 const LIST_PAGE_SIZE = 5; // 리스트 모드용 페이지 사이즈 (5개씩)
@@ -30,9 +30,10 @@ type ViewMode = "list" | "grid";
 
 export default function EquipmentStatsScreen() {
   const router = useRouter();
-  const theme = useColorScheme() ?? "light";
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [currentPage, setCurrentPage] = useState(0);
+  const theme = useColorScheme() ?? "light";
+  const isDark = theme === "dark"; // 다크모드 여부 변수화
 
   // 통합 훅 사용 (USE_API 플래그에 따라 목업/API 자동 전환)
   const devices = useDeviceData();
@@ -87,40 +88,40 @@ export default function EquipmentStatsScreen() {
         <TouchableOpacity
           style={[
             styles.listCard,
-            {
+            { 
               borderLeftColor: statusColor,
-              backgroundColor: Colors[theme].background,
+              // [수정] 다크모드 카드 배경색 및 보더색 연동
+              backgroundColor: isNG ? (isDark ? "#451a1a" : EQ_COLORS.cardNGBg) : Colors[theme].background,
+              borderColor: isDark ? Colors[theme].border : "transparent",
+              borderWidth: isDark ? 1 : 0
             },
-            isNG && styles.listCardNG,
           ]}
           onPress={() => goToDetail(item.deviceId)}
           activeOpacity={0.75}
         >
-          <View style={styles.listThumb}>
+          {/* [수정] 썸네일 박스 배경색 다크모드 대응 */}
+          <View style={[styles.listThumb, { backgroundColor: isDark ? "#334155" : "#F1F5F9" }]}>
             <Text style={styles.thumbIcon}>🎥</Text>
           </View>
           <View style={styles.listBody}>
             <View style={styles.listRow}>
-              <Text
-                style={[styles.deviceIdText, { color: Colors[theme].text }]}
-              >
-                {item.deviceId}
-              </Text>
+              {/* [수정] 기기 ID 텍스트 다크모드 색상 지정 */}
+              <Text style={[styles.deviceIdText, { color: Colors[theme].text }]}>{item.deviceId}</Text>
               <View style={[styles.badge, { backgroundColor: statusColor }]}>
                 <Text style={styles.badgeText}>
                   {STATUS_LABEL[item.machineStatus] || "알 수 없음"}
                 </Text>
               </View>
             </View>
-            <Text
-              style={[styles.modelName, { color: Colors[theme].description }]}
-            >
+            {/* [수정] 모델명 텍스트 다크모드 시 가독성 보정 */}
+            <Text style={[styles.modelName, { color: isDark ? "#94A3B8" : EQ_COLORS.textSecondary }]}>
               {item.modelName}
             </Text>
             <View style={styles.summaryGrid}>
               <SummaryItem
                 label="Seq"
                 value={String(item.lastSequence ?? "-")}
+                valueColor={Colors[theme].text}
               />
               <SummaryItem
                 label="비전 결과"
@@ -133,19 +134,17 @@ export default function EquipmentStatsScreen() {
                 valueColor={
                   item.severity
                     ? SEVERITY_COLOR[item.severity]
-                    : EQ_COLORS.textMuted
+                    : Colors[theme].text
                 }
               />
-              <SummaryItem label="시간" value={timeDisplay} />
+              <SummaryItem label="시간" value={timeDisplay} valueColor={Colors[theme].text} />
             </View>
           </View>
-          <Text style={[styles.chevron, { color: Colors[theme].border }]}>
-            ›
-          </Text>
+          <Text style={styles.chevron}>›</Text>
         </TouchableOpacity>
       );
     },
-    [goToDetail, theme],
+    [goToDetail, theme, isDark],
   );
 
   // ── 그리드 아이템 ─────────────────────────────
@@ -158,11 +157,11 @@ export default function EquipmentStatsScreen() {
         key={item.deviceId}
         style={[
           styles.gridCell,
-          {
-            borderColor: statusColor,
-            backgroundColor: Colors[theme].background,
+          { 
+            borderColor: isNG ? EQ_COLORS.ngRed : (isDark ? Colors[theme].border : statusColor),
+            // [수정] 그리드 셀 배경색 다크모드 대응
+            backgroundColor: isNG ? (isDark ? "#451a1a" : EQ_COLORS.cardNGBg) : Colors[theme].background 
           },
-          isNG && styles.gridCellNG,
         ]}
         onPress={() => goToDetail(item.deviceId)}
         activeOpacity={0.75}
@@ -172,10 +171,8 @@ export default function EquipmentStatsScreen() {
         >
           <Text style={styles.gridThumbIcon}>🎥</Text>
         </View>
-        <Text
-          style={[styles.gridId, { color: Colors[theme].text }]}
-          numberOfLines={1}
-        >
+        {/* [수정] 그리드 아이디 텍스트 다크모드 연동 */}
+        <Text style={[styles.gridId, { color: Colors[theme].text }]} numberOfLines={1}>
           {shortId}
         </Text>
         <View style={[styles.gridDot, { backgroundColor: statusColor }]} />
@@ -189,12 +186,11 @@ export default function EquipmentStatsScreen() {
   };
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: Colors[theme].background }]}
-    >
+    // [수정] 최상단 컨테이너 배경색을 다크모드 배경색으로 연동
+    <SafeAreaView style={[styles.container, { backgroundColor: Colors[theme].background }]}>
       <Stack.Screen options={{ headerShown: false }} />
       <StatusBar
-        barStyle={theme === "dark" ? "light-content" : "dark-content"}
+        barStyle="light-content"
         backgroundColor={EQ_COLORS.headerBg}
       />
       <View style={styles.header}>
@@ -211,8 +207,6 @@ export default function EquipmentStatsScreen() {
           showsHorizontalScrollIndicator={false}
           style={{ flex: 1 }}
         >
-          <ActionBtn label="+ 추가" onPress={() => {}} />
-          <ActionBtn label="삭제" onPress={() => {}} />
           <ActionBtn label="필터" onPress={() => {}} />
           <ActionBtn label="정렬 ↕" onPress={() => {}} />
         </ScrollView>
@@ -255,8 +249,11 @@ export default function EquipmentStatsScreen() {
         </View>
       </View>
 
-      <View style={styles.countBar}>
-        <Text style={styles.countText}>전체 {devices.length}개 장비</Text>
+      {/* [수정] 갯수 바 배경색 및 텍스트 다크모드 유연화 */}
+      <View style={[styles.countBar, { backgroundColor: isDark ? "#1e293b" : EQ_COLORS.countBarBg }]}>
+        <Text style={[styles.countText, { color: isDark ? "#94A3B8" : EQ_COLORS.textSecondary }]}>
+          전체 {devices.length}개 장비
+        </Text>
       </View>
 
       {viewMode === "list" ? (
@@ -284,6 +281,8 @@ export default function EquipmentStatsScreen() {
                   style={[
                     styles.numberBtn,
                     i === currentPage && styles.numberBtnOn,
+                    // [수정] 비활성화된 숫자 버튼 배경색 다크모드 조정
+                    i !== currentPage && isDark && { backgroundColor: "#334155" }
                   ]}
                   onPress={() => setCurrentPage(i)}
                 >
@@ -291,6 +290,8 @@ export default function EquipmentStatsScreen() {
                     style={[
                       styles.numberText,
                       i === currentPage && styles.numberTextOn,
+                      // [수정] 비활성화된 숫자 버튼 텍스트 다크모드 조정
+                      i !== currentPage && isDark && { color: "#94A3B8" }
                     ]}
                   >
                     {i + 1}
@@ -341,14 +342,20 @@ const SummaryItem = ({
   label: string;
   value: string;
   valueColor?: string;
-}) => (
-  <View style={styles.summaryItem}>
-    <Text style={[styles.summaryLabel, { color: EQ_COLORS.textMuted }]}>
-      {label}{" "}
-    </Text>
-    <Text style={[styles.summaryValue, { color: valueColor }]}>{value}</Text>
-  </View>
-);
+}) => {
+  const theme = useColorScheme() ?? "light";
+  const isDark = theme === "dark";
+
+  return (
+    <View style={styles.summaryItem}>
+      {/* [수정] 라벨 텍스트 다크모드 가독성 보정 */}
+      <Text style={[styles.summaryLabel, { color: isDark ? "#94A3B8" : EQ_COLORS.textMuted }]}>
+        {label}{" "}
+      </Text>
+      <Text style={[styles.summaryValue, { color: valueColor }]}>{value}</Text>
+    </View>
+  );
+};
 
 const CELL = (SW - 32 - 9 * 3) / 4;
 
@@ -396,9 +403,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: EQ_COLORS.countBarBg,
   },
-  countText: { fontSize: 12, color: EQ_COLORS.textSecondary },
+  countText: { fontSize: 12 },
   listContent: { padding: 12, gap: 10 },
   listCard: {
     flexDirection: "row",
@@ -413,7 +419,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  listCardNG: { backgroundColor: EQ_COLORS.cardNGBg },
+  listCardNG: {},
   listThumb: {
     width: 64,
     height: 64,
@@ -439,7 +445,7 @@ const styles = StyleSheet.create({
   summaryItem: { width: "48%", flexDirection: "row" },
   summaryLabel: { fontSize: 11 },
   summaryValue: { fontSize: 11, fontWeight: "600" },
-  chevron: { fontSize: 22 },
+  chevron: { fontSize: 22, color: EQ_COLORS.borderMuted },
   gridContainer: { flex: 1, paddingHorizontal: 16, paddingTop: 12 },
   gridWrapper: { flexDirection: "row", flexWrap: "wrap", gap: 9 },
   gridCell: {
@@ -456,10 +462,7 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 2,
   },
-  gridCellNG: {
-    backgroundColor: EQ_COLORS.cardNGBg,
-    borderColor: EQ_COLORS.ngRed,
-  },
+  gridCellNG: {},
   gridThumb: {
     width: 40,
     height: 40,
@@ -505,6 +508,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#E2E8F0",
   },
   numberBtnOn: { backgroundColor: EQ_COLORS.headerBg },
-  numberText: { fontSize: 12, color: "#64748B", fontWeight: "600" },
+  numberText: { fontSize: 12, fontWeight: "600" },
   numberTextOn: { color: "#FFFFFF" },
 });
