@@ -79,7 +79,7 @@ export default function CalendarView({
           calendarBackground: "transparent",
           textSectionTitleColor: isDark ? "#94a3b8" : "#b6b9be",
           selectedDayBackgroundColor: colors.tint,
-          selectedDayTextColor: "#ffffff",
+          selectedDayTextColor: isDark ? "#11181C" : "#ffffff",
           todayTextColor: colors.tint,
           dayTextColor: colors.text,
           arrowColor: colors.tint,

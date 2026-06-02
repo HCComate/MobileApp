@@ -78,6 +78,7 @@ export default function PlanScreen() {
 
       <View style={styles.calendarSection}>
         <CalendarView
+          key={theme}
           selectedDate={selectedDate}
           markedDates={markedDates}
           onDateSelect={(date: string) => setSelectedDate(date)}
