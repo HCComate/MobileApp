@@ -106,9 +106,7 @@ export default function AllLogScreen() {
             { backgroundColor: theme === "dark" ? "#111827" : "#1D1D5A" },
           ]}
         >
-          <ThemedText style={styles.headerTitle}>
-            전체 로그 보기 (실시간)
-          </ThemedText>
+          <ThemedText style={styles.headerTitle}>전체 로그 보기</ThemedText>
         </View>
         <View
           style={[
