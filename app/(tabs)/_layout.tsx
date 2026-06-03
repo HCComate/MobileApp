@@ -1,4 +1,3 @@
-import { Colors } from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
 import * as Notifications from "expo-notifications";
 import { Tabs } from "expo-router";
@@ -6,12 +5,17 @@ import React, { useEffect } from "react";
 import { useColorScheme } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AlertModal from "../../components/AlertModal";
+import { Colors } from "../../constants/Colors";
+import { respondToAlert } from "../../services/alertManager";
 import {
   startForegroundService,
   stopForegroundService,
 } from "../../services/foregroundService";
-import { startLogListener, stopLogListener, getCachedUsers } from "../../services/logListener";
-import { respondToAlert } from "../../services/alertManager";
+import {
+  getCachedUsers,
+  startLogListener,
+  stopLogListener,
+} from "../../services/logListener";
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
@@ -52,24 +56,42 @@ export default function TabLayout() {
     };
     initService();
     const responseListener =
-      Notifications.addNotificationResponseReceivedListener(async (response) => {
-        const actionId = response.actionIdentifier;
-        const data = response.notification.request.content.data as any;
-        const alertId = data?.alertId;
-        const deviceId = data?.deviceId;
+      Notifications.addNotificationResponseReceivedListener(
+        async (response) => {
+          const actionId = response.actionIdentifier;
+          const data = response.notification.request.content.data as any;
+          const alertId = data?.alertId;
+          const deviceId = data?.deviceId;
 
-        console.log("[notification] response:", actionId, "alertId:", alertId, "device:", deviceId);
+          console.log(
+            "[notification] response:",
+            actionId,
+            "alertId:",
+            alertId,
+            "device:",
+            deviceId,
+          );
 
-        if (!alertId) return;
+          if (!alertId) return;
 
-        // 알림 배너의 수락/거절 버튼 처리
-        if (actionId === "ACCEPT") {
-          await respondToAlert(alertId, "ACCEPTED", getCachedUsers(), deviceId);
-        } else if (actionId === "REJECT") {
-          await respondToAlert(alertId, "REJECTED", getCachedUsers(), deviceId);
-        }
-        // 기본 탭(배너 클릭)은 단순 앱 포그라운드 복귀
-      });
+          // 알림 배너의 수락/거절 버튼 처리
+          if (actionId === "ACCEPT") {
+            await respondToAlert(
+              alertId,
+              "ACCEPTED",
+              getCachedUsers(),
+              deviceId,
+            );
+          } else if (actionId === "REJECT") {
+            await respondToAlert(
+              alertId,
+              "REJECTED",
+              getCachedUsers(),
+              deviceId,
+            );
+          }
+        },
+      );
 
     const receivedListener = Notifications.addNotificationReceivedListener(
       (notification) => {
@@ -92,7 +114,6 @@ export default function TabLayout() {
       {/* <LastErrorBanner /> */}
       <Tabs
         screenOptions={{
-          // 라이트 모드 시 기존 색상(tint) 유지, 다크 모드 시 흰색으로 고정
           tabBarActiveTintColor: isDark ? "#FFFFFF" : Colors.light.tint,
           tabBarInactiveTintColor: isDark ? "#FFFFFF" : Colors.light.tint,
           headerShown: false,
@@ -100,9 +121,9 @@ export default function TabLayout() {
             backgroundColor: isDark ? "#1e293b" : "#FFFFFF",
             borderTopWidth: 1,
             borderTopColor: isDark ? "#334155" : "#F0F0F0",
-            height: 60 + (insets.bottom > 0 ? insets.bottom : 15),
-            paddingBottom: insets.bottom > 0 ? insets.bottom : 10,
-            paddingTop: 10,
+            height: 70 + (insets.bottom > 0 ? insets.bottom : 15),
+            paddingBottom: insets.bottom > 0 ? insets.bottom + 10 : 22,
+            paddingTop: 12,
           },
           tabBarLabelStyle: {
             fontSize: 12,
