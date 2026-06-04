@@ -6,6 +6,8 @@ export const STATUS_COLOR: Record<MachineStatus, string> = {
   IDLE: "#64748B",
   ERROR: "#EF4444",
   STOP: "#F59E0B",
+  STANDBY: "#3B82F6",
+  LOCKED: "#7C3AED",
 };
 
 export const STATUS_LABEL: Record<MachineStatus, string> = {
@@ -13,6 +15,8 @@ export const STATUS_LABEL: Record<MachineStatus, string> = {
   IDLE: "대기",
   ERROR: "오류 발생",
   STOP: "정지",
+  STANDBY: "준비 중",
+  LOCKED: "장비 잠금",
 };
 
 export const SEVERITY_COLOR: Record<Severity, string> = {

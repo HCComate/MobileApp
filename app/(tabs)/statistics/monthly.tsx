@@ -1,18 +1,21 @@
 import PageHeader from "@/components/PageHeader";
-import { Colors } from "@/constants/Colors";
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
 import apiClient from "@/services/apiClient";
-import { Stack, useFocusEffect } from "expo-router"; // 1. useFocusEffect 추가
-import React, { useCallback, useState } from "react"; // 2. useCallback 추가
+import { Stack, useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
+  StatusBar,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
+  useColorScheme,
 } from "react-native";
 import { BarChart, LineChart, PieChart } from "react-native-gifted-charts";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Colors } from "../../../constants/Colors";
 
 interface MonthlyStatsResponse {
   target_month: string;
@@ -30,12 +33,14 @@ interface MonthlyStatsResponse {
   }[];
   error_accumulation_by_device: { device_id: string; total_error: number }[];
   error_rate_by_part: { part_location: string; percentage: number }[];
+  reporting_sentences?: string[];
 }
 
 export default function MonthlyStatisticsScreen() {
+  const router = useRouter();
   const [loading, setLoading] = useState<boolean>(true);
   const [data, setData] = useState<MonthlyStatsResponse | null>(null);
-
+  const theme = useColorScheme() ?? "light";
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
     STATUS: true,
     CODES: true,
@@ -67,9 +72,9 @@ export default function MonthlyStatisticsScreen() {
 
   if (loading || !data)
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={Colors.light.brandDark} />
-      </View>
+      <ThemedView style={styles.center}>
+        <ActivityIndicator size="large" color={Colors[theme].tint} />
+      </ThemedView>
     );
 
   // 데이터 변환
@@ -99,11 +104,22 @@ export default function MonthlyStatisticsScreen() {
     label: item.part_location,
   }));
 
-  const labelStyle = { fontSize: 9, textAlign: "center" as const, width: 50 };
+  const labelStyle = {
+    fontSize: 9,
+    textAlign: "center" as const,
+    width: 50,
+    color: Colors[theme].text,
+  };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "right", "left"]}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: Colors[theme].background }]}
+      edges={["top", "right", "left"]}
+    >
       <Stack.Screen options={{ headerShown: false }} />
+      <StatusBar
+        barStyle={theme === "dark" ? "light-content" : "dark-content"}
+      />
       <PageHeader title={`월간 통계 (${data.target_month})`} showBack={true} />
 
       <ScrollView
@@ -111,13 +127,19 @@ export default function MonthlyStatisticsScreen() {
         contentContainerStyle={styles.content}
       >
         {/* 설비 상태 */}
-        <View style={styles.section}>
+        <ThemedView
+          style={[styles.section, { borderColor: Colors[theme].border }]}
+        >
           <TouchableOpacity
             style={styles.sectionHeader}
             onPress={() => toggleSection("STATUS")}
           >
-            <Text style={styles.sectionTitle}>월간 설비 상태 분포</Text>
-            <Text style={styles.arrow}>{expanded.STATUS ? "▲" : "▼"}</Text>
+            <ThemedText style={styles.sectionTitle}>
+              월간 설비 상태 분포
+            </ThemedText>
+            <ThemedText style={styles.arrow}>
+              {expanded.STATUS ? "▲" : "▼"}
+            </ThemedText>
           </TouchableOpacity>
           {expanded.STATUS && (
             <View style={styles.chartHolder}>
@@ -131,16 +153,22 @@ export default function MonthlyStatisticsScreen() {
               />
             </View>
           )}
-        </View>
+        </ThemedView>
 
         {/* 핵심 에러 코드 점유율 */}
-        <View style={styles.section}>
+        <ThemedView
+          style={[styles.section, { borderColor: Colors[theme].border }]}
+        >
           <TouchableOpacity
             style={styles.sectionHeader}
             onPress={() => toggleSection("CODES")}
           >
-            <Text style={styles.sectionTitle}>핵심 에러 코드 점유율</Text>
-            <Text style={styles.arrow}>{expanded.CODES ? "▲" : "▼"}</Text>
+            <ThemedText style={styles.sectionTitle}>
+              핵심 에러 코드 점유율
+            </ThemedText>
+            <ThemedText style={styles.arrow}>
+              {expanded.CODES ? "▲" : "▼"}
+            </ThemedText>
           </TouchableOpacity>
           {expanded.CODES && (
             <ScrollView horizontal style={styles.horizontalScroll}>
@@ -153,16 +181,22 @@ export default function MonthlyStatisticsScreen() {
               />
             </ScrollView>
           )}
-        </View>
+        </ThemedView>
 
         {/* 센서 추이 */}
-        <View style={styles.section}>
+        <ThemedView
+          style={[styles.section, { borderColor: Colors[theme].border }]}
+        >
           <TouchableOpacity
             style={styles.sectionHeader}
             onPress={() => toggleSection("SENSOR")}
           >
-            <Text style={styles.sectionTitle}>주차별 환경 센서 변화</Text>
-            <Text style={styles.arrow}>{expanded.SENSOR ? "▲" : "▼"}</Text>
+            <ThemedText style={styles.sectionTitle}>
+              주차별 환경 센서 변화
+            </ThemedText>
+            <ThemedText style={styles.arrow}>
+              {expanded.SENSOR ? "▲" : "▼"}
+            </ThemedText>
           </TouchableOpacity>
           {expanded.SENSOR && (
             <ScrollView horizontal style={styles.horizontalScroll}>
@@ -178,16 +212,22 @@ export default function MonthlyStatisticsScreen() {
               />
             </ScrollView>
           )}
-        </View>
+        </ThemedView>
 
         {/* 장비별 에러 누적 */}
-        <View style={styles.section}>
+        <ThemedView
+          style={[styles.section, { borderColor: Colors[theme].border }]}
+        >
           <TouchableOpacity
             style={styles.sectionHeader}
             onPress={() => toggleSection("DEVICE")}
           >
-            <Text style={styles.sectionTitle}>장비별 에러 누적 순위</Text>
-            <Text style={styles.arrow}>{expanded.DEVICE ? "▲" : "▼"}</Text>
+            <ThemedText style={styles.sectionTitle}>
+              장비별 에러 누적 순위
+            </ThemedText>
+            <ThemedText style={styles.arrow}>
+              {expanded.DEVICE ? "▲" : "▼"}
+            </ThemedText>
           </TouchableOpacity>
           {expanded.DEVICE && (
             <ScrollView horizontal style={styles.horizontalScroll}>
@@ -196,21 +236,27 @@ export default function MonthlyStatisticsScreen() {
                 barWidth={40}
                 width={deviceBarData.length * 60}
                 height={160}
-                frontColor={Colors.light.brandDark}
+                frontColor={Colors[theme].tint}
                 xAxisLabelTextStyle={labelStyle}
               />
             </ScrollView>
           )}
-        </View>
+        </ThemedView>
 
         {/* 부위별 에러 발생률 */}
-        <View style={styles.section}>
+        <ThemedView
+          style={[styles.section, { borderColor: Colors[theme].border }]}
+        >
           <TouchableOpacity
             style={styles.sectionHeader}
             onPress={() => toggleSection("PART")}
           >
-            <Text style={styles.sectionTitle}>부위별 에러 발생 빈도</Text>
-            <Text style={styles.arrow}>{expanded.PART ? "▲" : "▼"}</Text>
+            <ThemedText style={styles.sectionTitle}>
+              부위별 에러 발생 빈도
+            </ThemedText>
+            <ThemedText style={styles.arrow}>
+              {expanded.PART ? "▲" : "▼"}
+            </ThemedText>
           </TouchableOpacity>
           {expanded.PART && (
             <ScrollView horizontal style={styles.horizontalScroll}>
@@ -224,33 +270,58 @@ export default function MonthlyStatisticsScreen() {
               />
             </ScrollView>
           )}
-        </View>
+        </ThemedView>
+
+        {/* 리포트 보기 버튼 */}
+        <TouchableOpacity
+          style={[styles.reportBtn, { backgroundColor: Colors[theme].tint }]}
+          onPress={() => {
+            router.push({
+              pathname: "/statistics/report",
+              params: {
+                title: `월간 리포트 (${data.target_month})`,
+                sentences: JSON.stringify(data.reporting_sentences || []),
+              },
+            });
+          }}
+        >
+          <ThemedText style={styles.reportBtnText}>📝 인공지능 분석 리포트 보기</ThemedText>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: Colors.light.background },
+  safeArea: { flex: 1 },
   container: { flex: 1 },
   content: { padding: 16 },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   section: {
-    backgroundColor: "#FFFFFF",
     borderRadius: 14,
     padding: 14,
     marginBottom: 8,
-    elevation: 0, // 그림자 제거
-    borderWidth: 1, // 평평한 디자인을 위한 테두리 추가
-    borderColor: "#E1E4E8",
+    borderWidth: 1,
   },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  sectionTitle: { fontSize: 13, fontWeight: "700", color: "#2F3542" },
-  arrow: { fontSize: 12, color: "#A4B0BE" },
+  sectionTitle: { fontSize: 13, fontWeight: "700" },
+  arrow: { fontSize: 12 },
   chartHolder: { alignItems: "center", marginTop: 10 },
   horizontalScroll: { marginTop: 10, paddingBottom: 20 },
+  reportBtn: {
+    marginVertical: 12,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  reportBtnText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "bold",
+  },
 });

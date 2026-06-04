@@ -7,9 +7,18 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { MOCK_WORKERS } from "../mock/workers";
 import { respondToAlert } from "../services/alertManager";
+import { getCachedUsers } from "../services/logListener";
 import { AlertModalData, alertModalStore } from "../store/alertModalStore";
+
+// "2026-06-02 10:00:00.000" 또는 ISO-8601 모두 처리
+function parseTimestamp(ts: string): string {
+  if (!ts) return "-";
+  const normalized = ts.replace(" ", "T");
+  const d = new Date(normalized);
+  if (isNaN(d.getTime())) return ts;
+  return d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
 
 const SEVERITY_COLOR: Record<string, string> = {
   LOW: "#22C55E",
@@ -41,7 +50,7 @@ export default function AlertModal() {
   const handleAccept = async () => {
     setLoading(true);
     try {
-      await respondToAlert(data.alertId, "ACCEPTED", MOCK_WORKERS as any);
+      await respondToAlert(data.alertId, "ACCEPTED", getCachedUsers(), data.deviceId);
       alertModalStore.hide(); // 스토어에서 다음 알람을 가져옴
     } catch (e) {
       console.warn("[AlertModal] 수락 처리 실패", e);
@@ -52,7 +61,7 @@ export default function AlertModal() {
   const handleReject = async () => {
     setLoading(true);
     try {
-      await respondToAlert(data.alertId, "REJECTED", MOCK_WORKERS as any);
+      await respondToAlert(data.alertId, "REJECTED", getCachedUsers(), data.deviceId);
       alertModalStore.hide(); // 스토어에서 다음 알람을 가져옴
     } catch (e) {
       console.warn("[AlertModal] 거절 처리 실패", e);
@@ -90,7 +99,7 @@ export default function AlertModal() {
             <LogRow label="오류 내용" value={data.errorMsg} />
             <LogRow
               label="발생 시각"
-              value={new Date(data.timestamp).toLocaleTimeString()}
+              value={parseTimestamp(data.timestamp)}
             />
           </View>
 

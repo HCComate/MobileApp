@@ -1,17 +1,19 @@
 import { ERROR_MASTER_DATA } from "@/assets/data/statesheet";
 import PageHeader from "@/components/PageHeader";
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
 import { Colors } from "@/constants/Colors";
-import apiClient from "@/services/apiClient";
-import { Stack, useFocusEffect } from "expo-router";
+import { Stack, useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
   ScrollView,
+  StatusBar,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
+  useColorScheme,
 } from "react-native";
 import { BarChart, LineChart, PieChart } from "react-native-gifted-charts";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -26,11 +28,14 @@ interface WeeklyStatsResponse {
   sensor_anomaly_by_day: { day: string; anomaly_count: number }[];
   top5_error_codes: { code: string; count: number }[];
   status_distribution: { RUN: number; ERROR: number; IDLE: number };
+  reporting_sentences?: string[];
 }
 
 export default function WeeklyStatisticsScreen() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<WeeklyStatsResponse | null>(null);
+  const theme = useColorScheme() ?? "light";
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
     STATUS: true,
@@ -64,9 +69,9 @@ export default function WeeklyStatisticsScreen() {
 
   if (loading || !data)
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={Colors.light.brandDark} />
-      </View>
+      <ThemedView style={styles.center}>
+        <ActivityIndicator size="large" color={Colors[theme].tint} />
+      </ThemedView>
     );
 
   // 요일별 에러 발생 추이 데이터 변환
@@ -93,8 +98,14 @@ export default function WeeklyStatisticsScreen() {
   ];
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "right", "left"]}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: Colors[theme].background }]}
+      edges={["top", "right", "left"]}
+    >
       <Stack.Screen options={{ headerShown: false }} />
+      <StatusBar
+        barStyle={theme === "dark" ? "light-content" : "dark-content"}
+      />
       <PageHeader title={`주간 통계 (${data.target_week})`} showBack={true} />
 
       <ScrollView
@@ -102,13 +113,19 @@ export default function WeeklyStatisticsScreen() {
         contentContainerStyle={styles.content}
       >
         {/* 장비 상태 분포 */}
-        <View style={styles.section}>
+        <ThemedView
+          style={[styles.section, { borderColor: Colors[theme].border }]}
+        >
           <TouchableOpacity
             style={styles.sectionHeader}
             onPress={() => toggleSection("STATUS")}
           >
-            <Text style={styles.sectionTitle}>주간 종합 장비 상태 분포</Text>
-            <Text style={styles.arrow}>{expanded.STATUS ? "▲" : "▼"}</Text>
+            <ThemedText style={styles.sectionTitle}>
+              주간 종합 장비 상태 분포
+            </ThemedText>
+            <ThemedText style={styles.arrow}>
+              {expanded.STATUS ? "▲" : "▼"}
+            </ThemedText>
           </TouchableOpacity>
           {expanded.STATUS && (
             <View style={styles.chartHolder}>
@@ -116,43 +133,58 @@ export default function WeeklyStatisticsScreen() {
                 data={statusPieData}
                 donut
                 showText
-                textColor="#FFF"
+                textColor="white"
                 radius={70}
                 innerRadius={40}
               />
             </View>
           )}
-        </View>
+        </ThemedView>
 
         {/* 요일별 에러 발생 추이 */}
-        <View style={styles.section}>
+        <ThemedView
+          style={[styles.section, { borderColor: Colors[theme].border }]}
+        >
           <TouchableOpacity
             style={styles.sectionHeader}
             onPress={() => toggleSection("TREND")}
           >
-            <Text style={styles.sectionTitle}>요일별 에러 발생 추이</Text>
-            <Text style={styles.arrow}>{expanded.TREND ? "▲" : "▼"}</Text>
+            <ThemedText style={styles.sectionTitle}>
+              요일별 에러 발생 추이
+            </ThemedText>
+            <ThemedText style={styles.arrow}>
+              {expanded.TREND ? "▲" : "▼"}
+            </ThemedText>
           </TouchableOpacity>
           {expanded.TREND && (
             <View style={styles.chartHolder}>
               <LineChart
                 data={weeklyErrorLineData}
                 width={CHART_WIDTH}
-                color={Colors.light.brandDark}
+                color={Colors[theme].tint}
                 thickness={3}
+                dataPointsColor={Colors[theme].text}
+                yAxisTextStyle={{ color: Colors[theme].text }}
+                xAxisLabelTextStyle={{ color: Colors[theme].text }}
               />
             </View>
           )}
-        </View>
+        </ThemedView>
 
         {/* 장비별 에러 발생 순위 */}
-        <View style={styles.section}>
+        <ThemedView
+          style={[styles.section, { borderColor: Colors[theme].border }]}
+        >
           <TouchableOpacity
             style={styles.sectionHeader}
             onPress={() => toggleSection("DEVICE")}
           >
-            <Text style={styles.sectionTitle}>장비별 에러 발생 누적 순위</Text>
-            <Text style={styles.arrow}>{expanded.DEVICE ? "▲" : "▼"}</Text>
+            <ThemedText style={styles.sectionTitle}>
+              장비별 에러 발생 누적 순위
+            </ThemedText>
+            <ThemedText style={styles.arrow}>
+              {expanded.DEVICE ? "▲" : "▼"}
+            </ThemedText>
           </TouchableOpacity>
           {expanded.DEVICE && (
             <View style={styles.chartHolder}>
@@ -160,22 +192,28 @@ export default function WeeklyStatisticsScreen() {
                 data={deviceErrorBarData}
                 width={CHART_WIDTH}
                 barWidth={20}
-                frontColor={Colors.light.brandDark}
+                frontColor={Colors[theme].tint}
+                yAxisTextStyle={{ color: Colors[theme].text }}
+                xAxisLabelTextStyle={{ color: Colors[theme].text }}
               />
             </View>
           )}
-        </View>
+        </ThemedView>
 
         {/* 환경 데이터 이상치 */}
-        <View style={styles.section}>
+        <ThemedView
+          style={[styles.section, { borderColor: Colors[theme].border }]}
+        >
           <TouchableOpacity
             style={styles.sectionHeader}
             onPress={() => toggleSection("ANOMALY")}
           >
-            <Text style={styles.sectionTitle}>
+            <ThemedText style={styles.sectionTitle}>
               환경 데이터 임계치 초과 횟수 요일 집계
-            </Text>
-            <Text style={styles.arrow}>{expanded.ANOMALY ? "▲" : "▼"}</Text>
+            </ThemedText>
+            <ThemedText style={styles.arrow}>
+              {expanded.ANOMALY ? "▲" : "▼"}
+            </ThemedText>
           </TouchableOpacity>
           {expanded.ANOMALY && (
             <View style={styles.chartHolder}>
@@ -183,81 +221,124 @@ export default function WeeklyStatisticsScreen() {
                 data={anomalyBarData}
                 width={CHART_WIDTH}
                 barWidth={20}
+                yAxisTextStyle={{ color: Colors[theme].text }}
+                xAxisLabelTextStyle={{ color: Colors[theme].text }}
               />
             </View>
           )}
-        </View>
+        </ThemedView>
 
         {/* 에러 코드 TOP5 */}
-        <View style={styles.section}>
+        <ThemedView
+          style={[styles.section, { borderColor: Colors[theme].border }]}
+        >
           <TouchableOpacity
             style={styles.sectionHeader}
             onPress={() => toggleSection("TOP5")}
           >
-            <Text style={styles.sectionTitle}>에러 코드 발생 빈도 TOP 5</Text>
-            <Text style={styles.arrow}>{expanded.TOP5 ? "▲" : "▼"}</Text>
+            <ThemedText style={styles.sectionTitle}>
+              에러 코드 발생 빈도 TOP 5
+            </ThemedText>
+            <ThemedText style={styles.arrow}>
+              {expanded.TOP5 ? "▲" : "▼"}
+            </ThemedText>
           </TouchableOpacity>
           {expanded.TOP5 && (
-            <View style={styles.infoReportCard}>
+            <View
+              style={[
+                styles.infoReportCard,
+                { backgroundColor: theme === "dark" ? "#1F2937" : "#F8F9FA" },
+              ]}
+            >
               {data.top5_error_codes.map((item, idx) => {
                 const errorInfo = ERROR_MASTER_DATA.find(
                   (e) => e.코드 === item.code,
                 );
                 return (
-                  <View key={idx} style={styles.infoRow}>
+                  <View
+                    key={idx}
+                    style={[
+                      styles.infoRow,
+                      { borderBottomColor: Colors[theme].border },
+                    ]}
+                  >
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.infoLabel}>{item.code}</Text>
-                      <Text style={styles.subInfoLabel}>
+                      <ThemedText style={styles.infoLabel}>
+                        {item.code}
+                      </ThemedText>
+                      <ThemedText style={{ fontSize: 12, opacity: 0.7 }}>
                         {errorInfo ? errorInfo.오류명 : "알 수 없는 에러"}
-                      </Text>
+                      </ThemedText>
                     </View>
-                    <Text style={styles.infoValue}>{item.count}건</Text>
+                    <ThemedText style={styles.infoValue}>
+                      {item.count}건
+                    </ThemedText>
                   </View>
                 );
               })}
             </View>
           )}
-        </View>
+        </ThemedView>
+
+        {/* 리포트 보기 버튼 */}
+        <TouchableOpacity
+          style={[styles.reportBtn, { backgroundColor: Colors[theme].tint }]}
+          onPress={() => {
+            router.push({
+              pathname: "/statistics/report",
+              params: {
+                title: `주간 리포트 (${data.target_week})`,
+                sentences: JSON.stringify(data.reporting_sentences || []),
+              },
+            });
+          }}
+        >
+          <ThemedText style={styles.reportBtnText}>📝 인공지능 분석 리포트 보기</ThemedText>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: Colors.light.background },
+  safeArea: { flex: 1 },
   container: { flex: 1 },
   content: { padding: 16 },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   section: {
-    backgroundColor: "#FFFFFF",
     borderRadius: 14,
-    padding: 16,
-    marginBottom: 12,
-    elevation: 2,
+    padding: 14,
+    marginBottom: 8,
+    borderWidth: 1,
   },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  sectionTitle: { fontSize: 13, fontWeight: "700", color: "#2F3542" },
-  arrow: { fontSize: 12, color: "#A4B0BE" },
+  sectionTitle: { fontSize: 13, fontWeight: "700" },
+  arrow: { fontSize: 12 },
   chartHolder: { alignItems: "center", marginTop: 15 },
-  infoReportCard: {
-    backgroundColor: "#F8F9FA",
-    borderRadius: 10,
-    padding: 10,
-    marginTop: 10,
-  },
+  infoReportCard: { borderRadius: 10, padding: 10, marginTop: 10 },
   infoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingVertical: 8,
     borderBottomWidth: 0.5,
-    borderBottomColor: "#E1E4E8",
   },
-  infoLabel: { fontSize: 13, fontWeight: "700", color: "#2F3542" },
-  subInfoLabel: { fontSize: 12, color: "#666", marginTop: 2 },
+  infoLabel: { fontSize: 13, fontWeight: "700" },
   infoValue: { fontSize: 13, fontWeight: "600" },
+  reportBtn: {
+    marginVertical: 12,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  reportBtnText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "bold",
+  },
 });

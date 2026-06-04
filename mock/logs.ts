@@ -40,7 +40,7 @@ export interface RawLog {
   };
   body: {
     sequence: number;
-    machine_status: "RUN" | "ERROR" | "IDLE" | "STOP";
+    machine_status: "RUN" | "ERROR" | "IDLE" | "STOP" | "STANDBY" | "LOCKED";
     status_info: RawStatusInfo[];
     vision_result: RawVisionResult;
     sensor_data: {

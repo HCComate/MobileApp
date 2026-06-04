@@ -20,9 +20,12 @@ apiClient.interceptors.request.use(async (config) => {
     const token = await AsyncStorage.getItem("userToken");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.log(`[apiClient] ✓ 토큰 첨부: ${config.url} (${token.substring(0, 20)}...)`);
+    } else {
+      console.warn(`[apiClient] ⚠️ 토큰 없음: ${config.url} (토큰이 저장되지 않았습니다)`);
     }
   } catch (e) {
-    console.warn("[apiClient] 토큰 로드 실패:", e);
+    console.error("[apiClient] 토큰 로드 실패:", e);
   }
 
   return config;
@@ -33,7 +36,7 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
-      console.warn("[apiClient] 401 → 토큰 만료, 로그아웃 처리");
+      console.error("[apiClient] 🔴 401 Unauthorized → 토큰 만료, 로그아웃 처리");
       await AsyncStorage.removeItem("userToken");
     }
     return Promise.reject(error);

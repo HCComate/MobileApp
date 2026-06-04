@@ -3,6 +3,7 @@ import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   RefreshControl,
   StyleSheet,
   useColorScheme,
@@ -15,6 +16,7 @@ import InfoBanner from "../../components/InfoBanner";
 import { ThemedText } from "../../components/themed-text";
 import { ThemedView } from "../../components/themed-view";
 import { Colors } from "../../constants/Colors";
+import { getWorkerImage } from "../../constants/image";
 import { useScheduleData } from "../../hooks/useScheduleData";
 
 export default function ScheduleScreen() {
@@ -39,6 +41,26 @@ export default function ScheduleScreen() {
   const { workers, loading, refreshing, refresh } =
     useScheduleData(selectedDate);
 
+  const getRolePriority = (role: string) => {
+    switch (role?.toUpperCase()) {
+      case "MASTER":
+        return 3;
+      case "TECHNICIAN":
+        return 2;
+      case "OPERATOR":
+        return 1;
+      default:
+        return 0;
+    }
+  };
+
+  const sortedWorkers = useMemo(() => {
+    if (!workers) return [];
+    return [...workers].sort(
+      (a, b) => getRolePriority(b.role) - getRolePriority(a.role),
+    );
+  }, [workers]);
+
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
       case "MASTER":
@@ -61,12 +83,13 @@ export default function ScheduleScreen() {
       <ThemedView style={styles.container}>
         <View style={styles.bannerSection}>
           <InfoBanner
-            text={`선택된 날짜에 ${workers.length}명의 인원이 배정되었습니다.`}
+            text={`선택된 날짜에 ${sortedWorkers.length}명의 인원이 배정되었습니다.`}
           />
         </View>
 
         <View style={styles.calendarSection}>
           <CalendarView
+            key={colorScheme}
             selectedDate={selectedDate}
             onDateSelect={(date: string) => setSelectedDate(date)}
           />
@@ -86,8 +109,8 @@ export default function ScheduleScreen() {
             </View>
           ) : (
             <FlatList
-              data={workers}
-              keyExtractor={(item) => item.id.toString()}
+              data={sortedWorkers}
+              keyExtractor={(item) => (item.emp_id || item.id).toString()}
               refreshControl={
                 <RefreshControl
                   refreshing={refreshing}
@@ -96,53 +119,62 @@ export default function ScheduleScreen() {
                   tintColor="#3055C1"
                 />
               }
-              renderItem={({ item }) => (
-                <View
-                  style={[
-                    styles.workerRow,
-                    {
-                      backgroundColor: cardBgColor,
-                      borderColor: cardBorderColor,
-                    },
-                  ]}
-                >
+              renderItem={({ item }) => {
+                const imageSource = getWorkerImage(item.username);
+
+                return (
                   <View
                     style={[
-                      styles.avatarPlaceholder,
-                      { backgroundColor: isDark ? "#333" : "#F0F2F5" },
+                      styles.workerRow,
+                      {
+                        backgroundColor: cardBgColor,
+                        borderColor: cardBorderColor,
+                      },
                     ]}
                   >
-                    <ThemedText
-                      style={[styles.avatarText, { color: mainTextColor }]}
+                    <View
+                      style={[
+                        styles.avatarPlaceholder,
+                        {
+                          backgroundColor: isDark ? "#333" : "#F0F2F5",
+                          overflow: "hidden",
+                        },
+                      ]}
                     >
-                      {item.nickname.substring(0, 1)}
-                    </ThemedText>
-                  </View>
-                  <View style={styles.workerInfo}>
-                    <ThemedText
-                      type="defaultSemiBold"
-                      style={{ color: mainTextColor }}
+                      {imageSource ? (
+                        <Image
+                          source={imageSource}
+                          style={{ width: 40, height: 40 }}
+                        />
+                      ) : (
+                        <ThemedText
+                          style={[styles.avatarText, { color: mainTextColor }]}
+                        >
+                          {item.nickname.substring(0, 1)}
+                        </ThemedText>
+                      )}
+                    </View>
+                    <View style={styles.workerInfo}>
+                      <ThemedText
+                        type="defaultSemiBold"
+                        style={{ color: mainTextColor }}
+                      >
+                        {item.nickname}
+                      </ThemedText>
+                    </View>
+                    <View
+                      style={[
+                        styles.shiftBadge,
+                        { backgroundColor: getRoleBadgeColor(item.role) },
+                      ]}
                     >
-                      {item.nickname}
-                    </ThemedText>
-                    <ThemedText
-                      style={[styles.workerId, { color: subTextColor }]}
-                    >
-                      사번 {item.emp_id} • 계정 {item.username}
-                    </ThemedText>
+                      <ThemedText style={styles.shiftText}>
+                        {item.role}
+                      </ThemedText>
+                    </View>
                   </View>
-                  <View
-                    style={[
-                      styles.shiftBadge,
-                      { backgroundColor: getRoleBadgeColor(item.role) },
-                    ]}
-                  >
-                    <ThemedText style={styles.shiftText}>
-                      {item.role}
-                    </ThemedText>
-                  </View>
-                </View>
-              )}
+                );
+              }}
               ListEmptyComponent={
                 <View style={styles.emptyContainer}>
                   <ThemedText
@@ -204,7 +236,6 @@ const styles = StyleSheet.create({
   },
   avatarText: { fontSize: 14, fontWeight: "bold" },
   workerInfo: { flex: 1, marginLeft: 15 },
-  workerId: { fontSize: 12, marginTop: 2 },
   shiftBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   shiftText: { fontSize: 10, color: "#FFFFFF", fontWeight: "bold" },
   emptyContainer: { paddingTop: 40, alignItems: "center" },

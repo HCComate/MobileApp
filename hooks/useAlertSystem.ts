@@ -1,8 +1,8 @@
 import * as Notifications from "expo-notifications";
 import { useEffect, useRef } from "react";
 import { Platform } from "react-native";
-import { MOCK_WORKERS } from "../mock/workers";
 import { handleAlertEvent } from "../services/alertManager";
+import { getCachedUsers } from "../services/logListener";
 import { AlertEvent } from "../types/alert";
 import { useLogData } from "./updateData";
 
@@ -70,10 +70,16 @@ export function useAlertSystem() {
 
       if (newLogs.length > 0) {
         [...newLogs].reverse().forEach((log) => {
-          if (log.body?.machine_status === "ERROR") {
+          if (log.body?.machine_status === "ERROR" || log.body?.machine_status === "LOCKED") {
             const severity = (log.body?.status_info?.[0]?.severity ||
               "HIGH") as any;
-
+            
+            // � CRITICAL 심각도만 팝업 표시
+            if (severity !== "CRITICAL") {
+              console.log(`[AlertSystem] ${severity} 심각도는 스킵 (CRITICAL만 팝업)`);
+              return;
+            }
+            
             const alertEvent: AlertEvent = {
               alertId: `alert_${Date.now()}_${log.header?.device_id}_${log.body?.sequence}`,
               deviceId: log.header?.device_id || "UNKNOWN",
@@ -85,10 +91,11 @@ export function useAlertSystem() {
             };
 
             console.log(
-              "[AlertSystem] 에러 알람 트리거: ",
+              "[AlertSystem] CRITICAL 로컬 ERROR 감지 (로컬 에스컬): ",
               log.header?.device_id,
             );
-            handleAlertEvent(alertEvent, MOCK_WORKERS as any);
+            // 🔑 로컬 로그에서 감지한 것이므로 isServerEscalation=false
+            handleAlertEvent(alertEvent, getCachedUsers(), false);
           }
         });
 

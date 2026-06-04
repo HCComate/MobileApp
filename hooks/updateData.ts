@@ -86,39 +86,19 @@ export function useLogData(): RawLog[] {
               new Date(b.body.timestamp).getTime() -
               new Date(a.body.timestamp).getTime(),
           );
-          
-          setLogs((prevLogs) => {
-            const map = new Map<string, RawLog>();
-            // 1. 기존 로그 저장
-            prevLogs.forEach(log => {
-                const key = `${log.header.device_id}_${log.body.timestamp}`;
-                map.set(key, log);
-            });
-            // 2. 새 로그로 덮어쓰기/추가
-            sortedLogs.forEach(log => {
-                const key = `${log.header.device_id}_${log.body.timestamp}`;
-                map.set(key, log);
-            });
-            
-            // 3. 다시 정렬 후 최대 1000개까지만 유지
-            const allLogs = Array.from(map.values()).sort(
-                (a, b) =>
-                  new Date(b.body.timestamp).getTime() -
-                  new Date(a.body.timestamp).getTime()
-            );
-            return allLogs.slice(0, 1000);
-          });
+          setLogs(sortedLogs);
         } else {
-          // 서버 데이터가 아예 없는 경우 (빈 배열 반환 시)에는 아무것도 안 함 (기존 누적 유지)
+          setLogs([]);
         }
       } catch (e) {
         console.error("[useLogData] SERVER 데이터 로드 실패:", e);
-        setLogs(MOCK_RAW_LOGS);
+        // 서버 모드에서 실패 시 MOCK으로 덮어쓰지 않고 빈 배열 유지
+        setLogs([]);
       }
     };
 
     fetchLogs();
-    const interval = setInterval(fetchLogs, 1000);
+    const interval = setInterval(fetchLogs, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -129,90 +109,61 @@ export function useDeviceData() {
   const logs = useLogData();
   const [devices, setDevices] = useState<DeviceSummary[]>([]);
 
+  // 서버 모드: 5초 폴링 (isServerMode가 나중에 true가 되어도 interval에서 감지)
   useEffect(() => {
-    const updateDevices = async () => {
-      // 1. 실제 서버 모드
-      if (isServerMode) {
-        try {
-          const res = await apiClient.get<any>("/api/devices");
-
-          // AdminPC Server: 배열 직접 반환 [...] 또는 { data: [...] }
-          const rawData = res.data?.data ?? res.data ?? [];
-          if (Array.isArray(rawData) && rawData.length > 0) {
-            console.log(
-              `[useDeviceData] SERVER 기기 목록 수신 성공 (${rawData.length}건)`,
-            );
-
-            const mappedDevices: DeviceSummary[] = rawData.map((d: any) => ({
-              deviceId: d.deviceId || d.device_id,
-              modelName: d.modelName || d.model_name,
-              machineStatus: (d.machineStatus || d.status) as MachineStatus,
-              timestamp: d.timestamp,
-              visionResult: d.visionResult as VisionStatus,
-              severity: d.severity as Severity,
-              lastSequence: d.lastSequence || 0,
-            }));
-
-            setDevices(mappedDevices);
-            return;
-          }
-        } catch (e) {
-          console.error("[useDeviceData] SERVER 기기 데이터 로드 실패:", e);
+    const fetchServerDevices = async () => {
+      if (!isServerMode) return;
+      try {
+        const res = await apiClient.get<any>("/api/devices");
+        const rawData = res.data?.data ?? res.data ?? [];
+        if (Array.isArray(rawData)) {
+          console.log(`[useDeviceData] SERVER 기기 목록 수신: ${rawData.length}건`);
+          setDevices(rawData.map((d: any) => ({
+            deviceId: d.deviceId || d.device_id,
+            modelName: d.modelName || d.model_name,
+            machineStatus: (d.machineStatus || d.status) as MachineStatus,
+            timestamp: d.timestamp,
+            visionResult: d.visionResult as VisionStatus,
+            severity: d.severity as Severity,
+            lastSequence: d.lastSequence || 0,
+          })));
         }
+      } catch (e) {
+        console.error("[useDeviceData] SERVER 기기 데이터 로드 실패:", e);
       }
-
-      // 2. 가짜 데이터 처리 로직 (MOCK 모드이거나 서버 호출 실패 시)
-      console.log("[useDeviceData] MOCK/Fallback 데이터 로직 실행");
-      const mappedDevices: DeviceSummary[] = MOCK_DEVICES.map((device) => {
-        const deviceLogs = logs.filter(
-          (l) => l.header?.device_id === device.id,
-        );
-        const latestLog = deviceLogs[0];
-
-        let status: MachineStatus = "STOP";
-        let timestamp = new Date().toISOString();
-        let visionResult: VisionStatus = "OK";
-        let severity: Severity = "LOW";
-        let lastSequence = 0;
-
-        if (latestLog) {
-          const logTime = new Date(latestLog.body?.timestamp || 0).getTime();
-          const now = Date.now();
-          const currentLogStatus = (latestLog.body?.machine_status ||
-            "STOP") as MachineStatus;
-
-          if (
-            currentLogStatus !== "ERROR" &&
-            now - logTime > IDLE_THRESHOLD_MS
-          ) {
-            status = "IDLE";
-          } else {
-            status = currentLogStatus;
-          }
-
-          timestamp = latestLog.body?.timestamp || timestamp;
-          visionResult = latestLog.body?.vision_result
-            ?.result as unknown as VisionStatus;
-          severity = (latestLog.body?.status_info?.[0]?.severity ||
-            "LOW") as Severity;
-          lastSequence = latestLog.body?.sequence || 0;
-        }
-
-        return {
-          deviceId: device.id,
-          modelName: device.name,
-          machineStatus: status,
-          timestamp: timestamp,
-          visionResult: visionResult,
-          severity: severity,
-          lastSequence: lastSequence,
-        };
-      });
-
-      setDevices(mappedDevices);
     };
 
-    updateDevices();
+    fetchServerDevices();
+    const interval = setInterval(fetchServerDevices, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // MOCK 모드: logs 변경 시마다 장비 상태 재계산
+  useEffect(() => {
+    if (isServerMode) return;
+
+    console.log("[useDeviceData] MOCK 데이터 로직 실행");
+    setDevices(MOCK_DEVICES.map((device) => {
+      const latestLog = logs.find((l) => l.header?.device_id === device.id);
+      let status: MachineStatus = "STOP";
+      let timestamp = new Date().toISOString();
+      let visionResult: VisionStatus = "OK";
+      let severity: Severity = "LOW";
+      let lastSequence = 0;
+
+      if (latestLog) {
+        const logTime = new Date(latestLog.body?.timestamp || 0).getTime();
+        const currentLogStatus = (latestLog.body?.machine_status || "STOP") as MachineStatus;
+        status = (currentLogStatus !== "ERROR" && currentLogStatus !== "LOCKED" &&
+          Date.now() - logTime > IDLE_THRESHOLD_MS) ? "IDLE" : currentLogStatus;
+        timestamp = latestLog.body?.timestamp || timestamp;
+        visionResult = latestLog.body?.vision_result?.result as unknown as VisionStatus;
+        severity = (latestLog.body?.status_info?.[0]?.severity || "LOW") as Severity;
+        lastSequence = latestLog.body?.sequence || 0;
+      }
+      return { deviceId: device.id, modelName: device.name, machineStatus: status,
+        timestamp, visionResult, severity, lastSequence };
+    }));
   }, [logs]);
 
   return devices;

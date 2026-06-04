@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "MobileApp",
-    "slug": "MobileApp",
-    "version": "1.0.0",
+    "name": "VisionMate",
+    "slug": "VisionMate",
+    "version": "1.2.2",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/app-icon.png",
     "scheme": "mobileapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -13,14 +13,13 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "backgroundColor": "#1F3169",
+        "foregroundImage": "./assets/images/app-icon.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.MobileApp"
+      "package": "com.mobileapp",
+      "usesCleartextTraffic": true
     },
     "web": {
       "output": "static",

@@ -1,18 +1,27 @@
-import { Colors } from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
 import * as Notifications from "expo-notifications";
 import { Tabs } from "expo-router";
 import React, { useEffect } from "react";
+import { useColorScheme } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AlertModal from "../../components/AlertModal";
+import { Colors } from "../../constants/Colors";
+import { respondToAlert } from "../../services/alertManager";
 import {
   startForegroundService,
   stopForegroundService,
 } from "../../services/foregroundService";
-import { startLogListener, stopLogListener } from "../../services/logListener";
+import {
+  getCachedUsers,
+  startLogListener,
+  stopLogListener,
+} from "../../services/logListener";
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
+  const theme = useColorScheme() ?? "light";
+  const isDark = theme === "dark";
+
   useEffect(() => {
     // 1. 알림 핸들러 설정
     Notifications.setNotificationHandler({
@@ -40,20 +49,49 @@ export default function TabLayout() {
         console.log("[TabLayout] startForegroundService succeeded");
 
         // 4. 로그 리스너 시작
-        startLogListener();
+        await startLogListener();
       } catch (e) {
         console.warn("[TabLayout] Initialization failed", e);
       }
     };
     initService();
     const responseListener =
-      Notifications.addNotificationResponseReceivedListener((response) => {
-        console.log("[notification] response received:", response);
-        // response.actionIdentifier 또는 response.notification.request.content.data로
-        // 네비게이션 여부를 판단하거나 무시하도록 처리할 수 있습니다. 개발 모드에서는
-        // 알림 탭 시 앱이 포그라운드로 복귀하면서 다시 로드되는 경우가 있으니 추가 재로딩
-        // 로직은 여기서 피하도록 설계하세요.
-      });
+      Notifications.addNotificationResponseReceivedListener(
+        async (response) => {
+          const actionId = response.actionIdentifier;
+          const data = response.notification.request.content.data as any;
+          const alertId = data?.alertId;
+          const deviceId = data?.deviceId;
+
+          console.log(
+            "[notification] response:",
+            actionId,
+            "alertId:",
+            alertId,
+            "device:",
+            deviceId,
+          );
+
+          if (!alertId) return;
+
+          // 알림 배너의 수락/거절 버튼 처리
+          if (actionId === "ACCEPT") {
+            await respondToAlert(
+              alertId,
+              "ACCEPTED",
+              getCachedUsers(),
+              deviceId,
+            );
+          } else if (actionId === "REJECT") {
+            await respondToAlert(
+              alertId,
+              "REJECTED",
+              getCachedUsers(),
+              deviceId,
+            );
+          }
+        },
+      );
 
     const receivedListener = Notifications.addNotificationReceivedListener(
       (notification) => {
@@ -76,16 +114,16 @@ export default function TabLayout() {
       {/* <LastErrorBanner /> */}
       <Tabs
         screenOptions={{
-          tabBarActiveTintColor: Colors.light.tint,
-          tabBarInactiveTintColor: Colors.light.tint,
+          tabBarActiveTintColor: isDark ? "#FFFFFF" : Colors.light.tint,
+          tabBarInactiveTintColor: isDark ? "#FFFFFF" : Colors.light.tint,
           headerShown: false,
           tabBarStyle: {
-            backgroundColor: "#FFFFFF",
+            backgroundColor: isDark ? "#1e293b" : "#FFFFFF",
             borderTopWidth: 1,
-            borderTopColor: "#F0F0F0",
-            height: 60 + (insets.bottom > 0 ? insets.bottom : 15),
-            paddingBottom: insets.bottom > 0 ? insets.bottom : 10,
-            paddingTop: 10,
+            borderTopColor: isDark ? "#334155" : "#F0F0F0",
+            height: 70 + (insets.bottom > 0 ? insets.bottom : 15),
+            paddingBottom: insets.bottom > 0 ? insets.bottom + 10 : 22,
+            paddingTop: 12,
           },
           tabBarLabelStyle: {
             fontSize: 12,
@@ -145,6 +183,7 @@ export default function TabLayout() {
           "statistics/weekly",
           "statistics/monthly",
           "statistics/yearly",
+          "statistics/report",
         ].map((name) => (
           <Tabs.Screen key={name} name={name} options={{ href: null }} />
         ))}

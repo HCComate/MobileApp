@@ -1,6 +1,6 @@
 import { Colors } from "@/constants/Colors";
 import React from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, View, useColorScheme } from "react-native";
 import { Calendar, LocaleConfig } from "react-native-calendars";
 
 // 달력 한글화
@@ -59,8 +59,17 @@ export default function CalendarView({
   onDateSelect,
   markedDates,
 }: CalendarViewProps) {
+  const theme = useColorScheme() ?? "light";
+  const isDark = theme === "dark";
+  const colors = Colors[theme];
+
   return (
-    <View style={styles.calendarContainer}>
+    <View
+      style={[
+        styles.calendarContainer,
+        { backgroundColor: isDark ? "#1E293B" : "#EBF2FA" },
+      ]}
+    >
       <Calendar
         current={selectedDate}
         onDayPress={(day: any) => {
@@ -68,13 +77,13 @@ export default function CalendarView({
         }}
         theme={{
           calendarBackground: "transparent",
-          textSectionTitleColor: "#b6b9be",
-          selectedDayBackgroundColor: Colors.light.tint,
-          selectedDayTextColor: "#ffffff",
-          todayTextColor: Colors.light.tint,
-          dayTextColor: Colors.light.text,
-          arrowColor: Colors.light.tint,
-          monthTextColor: Colors.light.text,
+          textSectionTitleColor: isDark ? "#94a3b8" : "#b6b9be",
+          selectedDayBackgroundColor: colors.tint,
+          selectedDayTextColor: isDark ? "#11181C" : "#ffffff",
+          todayTextColor: colors.tint,
+          dayTextColor: colors.text,
+          arrowColor: colors.tint,
+          monthTextColor: colors.text,
           textDayFontWeight: "500",
           textMonthFontWeight: "bold",
           textDayHeaderFontWeight: "bold",
@@ -85,7 +94,7 @@ export default function CalendarView({
           [selectedDate]: {
             ...(markedDates?.[selectedDate] || {}),
             selected: true,
-            selectedColor: Colors.light.tint,
+            selectedColor: colors.tint,
           },
         }}
       />
@@ -95,7 +104,6 @@ export default function CalendarView({
 
 const styles = StyleSheet.create({
   calendarContainer: {
-    backgroundColor: "#EBF2FA",
     borderRadius: 16,
     paddingVertical: 8,
     paddingHorizontal: 5,

@@ -23,7 +23,7 @@ const DEVICE_IDS = Array.from(
   (_, i) => `RASP_PI_${String(i + 1).padStart(2, "0")}`,
 );
 
-export const getAssignedDevices = (workerId: string): string[] => {
+const getAssignedDevices = (workerId: string): string[] => {
   const workerIndex = WORKER_LIST.findIndex((w) => w.id === workerId);
   if (workerIndex === -1) return [];
 
