@@ -6,6 +6,7 @@ import { getWorkerImage } from "@/constants/image";
 import { CURRENT_LOGIN_ID, MOCK_USER_LIST } from "@/mock/userData";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -38,6 +39,17 @@ export default function MyPageScreen() {
 
   const [serverIp, setServerIp] = useState("");
   const [serverPort, setServerPort] = useState("");
+
+  const appVersion = Constants.expoConfig?.version || "1.0.0";
+
+  const currentTime = new Date().toLocaleString("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -98,6 +110,7 @@ export default function MyPageScreen() {
                 name="account"
                 size={60}
                 color="#3055C1"
+                onPress={() => {}}
               />
             )}
           </View>
@@ -200,7 +213,7 @@ export default function MyPageScreen() {
         </View>
 
         <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>관리 메뉴</ThemedText>
+          <ThemedText style={styles.sectionTitle}>管理局 메뉴</ThemedText>
           <ThemedView
             style={[styles.card, { borderColor: Colors[theme].border }]}
           >
@@ -250,7 +263,7 @@ export default function MyPageScreen() {
 
         <View style={styles.footer}>
           <ThemedText style={styles.versionText}>
-            버전 1.0.2 (Build 20260520)
+            VisionMate v{appVersion} - Last Updated: {currentTime}
           </ThemedText>
         </View>
         <View style={{ height: 40 }} />
