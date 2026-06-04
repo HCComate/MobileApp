@@ -1,8 +1,10 @@
 import PageHeader from "@/components/PageHeader";
+import ReportingButton from "@/components/ReportingButton";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import apiClient from "@/services/apiClient";
-import { Stack, useFocusEffect, useRouter } from "expo-router";
+import { getCachedStats, setCachedStats } from "@/services/prefetchService";
+import { Stack, useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -37,7 +39,6 @@ interface MonthlyStatsResponse {
 }
 
 export default function MonthlyStatisticsScreen() {
-  const router = useRouter();
   const [loading, setLoading] = useState<boolean>(true);
   const [data, setData] = useState<MonthlyStatsResponse | null>(null);
   const theme = useColorScheme() ?? "light";
@@ -49,14 +50,26 @@ export default function MonthlyStatisticsScreen() {
     PART: true,
   });
 
-  const fetchStatistics = () => {
-    const today = new Date();
-    const formattedMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
-    apiClient
-      .get(`/api/stats/monthly?month=${formattedMonth}`)
-      .then((res) => setData(res.data))
-      .catch((e) => console.error(e))
-      .finally(() => setLoading(false));
+  const fetchStatistics = async () => {
+    try {
+      const cached = await getCachedStats("monthly");
+      if (cached) {
+        setData(cached);
+        setLoading(false);
+      }
+
+      const today = new Date();
+      const formattedMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+      const res = await apiClient.get(
+        `/api/stats/monthly?month=${formattedMonth}`,
+      );
+      setData(res.data);
+      await setCachedStats("monthly", res.data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // 페이지에 다시 들어올 때마다 데이터 새로고침
@@ -271,24 +284,7 @@ export default function MonthlyStatisticsScreen() {
             </ScrollView>
           )}
         </ThemedView>
-
-        {/* 리포트 보기 버튼 */}
-        <TouchableOpacity
-          style={[styles.reportBtn, { backgroundColor: Colors[theme].tint }]}
-          onPress={() => {
-            router.push({
-              pathname: "./report",
-              params: {
-                title: `월간 리포트 (${data.target_month})`,
-                sentences: JSON.stringify(data.reporting_sentences || []),
-              },
-            });
-          }}
-        >
-          <ThemedText style={styles.reportBtnText}>
-            📝 인공지능 분석 리포트 보기
-          </ThemedText>
-        </TouchableOpacity>
+        <ReportingButton period="monthly" />
       </ScrollView>
     </SafeAreaView>
   );

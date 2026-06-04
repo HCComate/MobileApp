@@ -1,10 +1,12 @@
 import { ERROR_MASTER_DATA } from "@/assets/data/statesheet";
 import PageHeader from "@/components/PageHeader";
+import ReportingButton from "@/components/ReportingButton";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { Colors } from "@/constants/Colors";
 import apiClient from "@/services/apiClient";
-import { Stack, useFocusEffect, useRouter } from "expo-router";
+import { getCachedStats, setCachedStats } from "@/services/prefetchService";
+import { Stack, useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -33,7 +35,6 @@ interface WeeklyStatsResponse {
 }
 
 export default function WeeklyStatisticsScreen() {
-  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<WeeklyStatsResponse | null>(null);
   const theme = useColorScheme() ?? "light";
@@ -46,16 +47,26 @@ export default function WeeklyStatisticsScreen() {
     TOP5: false,
   });
 
-  const fetchStatistics = () => {
-    const today = new Date();
-    const formattedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  const fetchStatistics = async () => {
+    try {
+      const cached = await getCachedStats("weekly");
+      if (cached) {
+        setData(cached);
+        setLoading(false);
+      }
 
-    // ★ [수정] .then 및 .catch 매개변수에 명시적 타입 지정을 적용하여 Implicit Any 에러 차단
-    apiClient
-      .get(`/api/stats/weekly?date=${formattedDate}`)
-      .then((res: any) => setData(res.data))
-      .catch((e: any) => console.error(e))
-      .finally(() => setLoading(false));
+      const today = new Date();
+      const formattedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+      const res = await apiClient.get(
+        `/api/stats/weekly?date=${formattedDate}`,
+      );
+      setData(res.data);
+      await setCachedStats("weekly", res.data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // 화면에 포커스될 때마다 fetchStatistics 실행
@@ -281,24 +292,7 @@ export default function WeeklyStatisticsScreen() {
             </View>
           )}
         </ThemedView>
-
-        {/* 리포트 보기 버튼 */}
-        <TouchableOpacity
-          style={[styles.reportBtn, { backgroundColor: Colors[theme].tint }]}
-          onPress={() => {
-            router.push({
-              pathname: "./report",
-              params: {
-                title: `주간 리포트 (${data.target_week})`,
-                sentences: JSON.stringify(data.reporting_sentences || []),
-              },
-            });
-          }}
-        >
-          <ThemedText style={styles.reportBtnText}>
-            📝 인공지능 분석 리포트 보기
-          </ThemedText>
-        </TouchableOpacity>
+        <ReportingButton period="weekly" />
       </ScrollView>
     </SafeAreaView>
   );

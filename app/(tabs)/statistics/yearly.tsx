@@ -1,8 +1,10 @@
 import PageHeader from "@/components/PageHeader";
+import ReportingButton from "@/components/ReportingButton";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import apiClient from "@/services/apiClient";
-import { Stack, useFocusEffect, useRouter } from "expo-router";
+import { getCachedStats, setCachedStats } from "@/services/prefetchService";
+import { Stack, useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -34,7 +36,6 @@ interface YearlyStatsResponse {
 }
 
 export default function YearlyStatisticsScreen() {
-  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<YearlyStatsResponse | null>(null);
   const theme = useColorScheme() ?? "light";
@@ -48,13 +49,23 @@ export default function YearlyStatisticsScreen() {
     STABILITY: false,
   });
 
-  const fetchStatistics = () => {
-    const currentYear = new Date().getFullYear().toString();
-    apiClient
-      .get(`/api/stats/yearly?year=${currentYear}`)
-      .then((res) => setData(res.data))
-      .catch((e) => console.error(e))
-      .finally(() => setLoading(false));
+  const fetchStatistics = async () => {
+    try {
+      const cached = await getCachedStats("yearly");
+      if (cached) {
+        setData(cached);
+        setLoading(false);
+      }
+
+      const currentYear = new Date().getFullYear().toString();
+      const res = await apiClient.get(`/api/stats/yearly?year=${currentYear}`);
+      setData(res.data);
+      await setCachedStats("yearly", res.data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // 화면에 포커스될 때마다 fetchStatistics 실행
@@ -223,24 +234,7 @@ export default function YearlyStatisticsScreen() {
             )}
           </ThemedView>
         ))}
-
-        {/* 리포트 보기 버튼 */}
-        <TouchableOpacity
-          style={[styles.reportBtn, { backgroundColor: Colors[theme].tint }]}
-          onPress={() => {
-            router.push({
-              pathname: "./report",
-              params: {
-                title: `연간 리포트 (${data.target_year}년)`,
-                sentences: JSON.stringify(data.reporting_sentences || []),
-              },
-            });
-          }}
-        >
-          <ThemedText style={styles.reportBtnText}>
-            📝 인공지능 분석 리포트 보기
-          </ThemedText>
-        </TouchableOpacity>
+        <ReportingButton period="yearly" />
       </ScrollView>
     </SafeAreaView>
   );

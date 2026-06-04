@@ -36,6 +36,9 @@ export interface DeviceSummary {
   visionResult: VisionStatus;
   severity: Severity;
   lastSequence: number;
+  // 비전 이미지 표시용 (로그에서 매핑). 목록 API는 주지 않으므로 옵셔널.
+  defectType?: string;
+  imageUrl?: string | null;
 }
 
 export interface DeviceDetail {

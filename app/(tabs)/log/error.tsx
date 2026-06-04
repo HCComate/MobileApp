@@ -112,7 +112,7 @@ export default function ErrorLogScreen() {
         <FlatList
           data={errorLogs}
           keyExtractor={(item) =>
-            `${item.header.device_id}-${item.body.sequence}`
+            `${item.header.device_id}__${item.body.sequence}__${item.body.timestamp}`
           }
           renderItem={renderLogItem}
           showsVerticalScrollIndicator={false}

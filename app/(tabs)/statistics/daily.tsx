@@ -1,8 +1,10 @@
 import PageHeader from "@/components/PageHeader";
+import ReportingButton from "@/components/ReportingButton";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import apiClient from "@/services/apiClient";
-import { Stack, useFocusEffect, useRouter } from "expo-router";
+import { getCachedStats, setCachedStats } from "@/services/prefetchService";
+import { Stack, useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -48,7 +50,6 @@ interface DailyStatsResponse {
 }
 
 export default function DailyStatisticsScreen() {
-  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [data, setData] = useState<DailyStatsResponse | null>(null);
@@ -65,13 +66,20 @@ export default function DailyStatisticsScreen() {
 
   const fetchStatistics = async () => {
     try {
+      // 캐시 우선 확인 — 있으면 즉시 표시
+      const cached = await getCachedStats("daily");
+      if (cached) {
+        setData(cached);
+        setLoading(false);
+      }
+
       const today = new Date();
       const formattedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-
       const response = await apiClient.get(
         `/api/stats/daily?date=${formattedDate}`,
       );
       setData(response.data);
+      await setCachedStats("daily", response.data);
     } catch (error) {
       console.error("Daily fetch error:", error);
     } finally {
@@ -339,24 +347,7 @@ export default function DailyStatisticsScreen() {
             </View>
           )}
         </ThemedView>
-
-        {/* 리포트 보기 버튼 */}
-        <TouchableOpacity
-          style={[styles.reportBtn, { backgroundColor: Colors[theme].tint }]}
-          onPress={() => {
-            router.push({
-              pathname: "./report",
-              params: {
-                title: `일간 리포트 (${data.target_date})`,
-                sentences: JSON.stringify(data.reporting_sentences || []),
-              },
-            });
-          }}
-        >
-          <ThemedText style={styles.reportBtnText}>
-            📝 인공지능 분석 리포트 보기
-          </ThemedText>
-        </TouchableOpacity>
+        <ReportingButton period="daily" />
       </ScrollView>
     </SafeAreaView>
   );

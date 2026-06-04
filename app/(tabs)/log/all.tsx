@@ -16,16 +16,29 @@ import { Colors } from "../../../constants/Colors";
 import { useLogData } from "../../../hooks/updateData"; // useLogData 훅 임포트
 import { RawLog } from "../../../mock/Logs"; // 타입 임포트
 
+// RESOLVED(오류 수정 완료) 로그는 친화적 라벨로 변환해 표시한다.
+// 서버 msg는 "Recovery by {username}" 형식.
+function formatLogMsg(info?: { code?: string; msg?: string }) {
+  if (info?.code === "RESOLVED") {
+    const by = (info.msg ?? "").replace(/recovery by/i, "").trim();
+    return by ? `오류 수정 완료 (${by})` : "오류 수정 완료";
+  }
+  return info?.msg ?? "No Message";
+}
+
 export default function AllLogScreen() {
   const logs = useLogData(); // 서버로부터 실시간 로그 데이터 가져오기
   const theme = useColorScheme() ?? "light";
 
   const getStatusStyle = (item: RawLog) => {
-    const info = item.body.status_info[0] || { msg: "", severity: "LOW" };
-    const msg = info.msg.toLowerCase();
+    const info = item.body.status_info?.[0];
+    const code = info?.code;
+    const msg = (info?.msg ?? "").toLowerCase();
+    const severity = info?.severity;
 
-    // 문제 해결은 파란색
+    // 문제 해결(오류 수정 완료 포함)은 파란색
     if (
+      code === "RESOLVED" ||
       msg.includes("recovery") ||
       msg.includes("success") ||
       msg.includes("reconnected")
@@ -36,13 +49,13 @@ export default function AllLogScreen() {
     if (
       item.body.machine_status === "ERROR" ||
       item.body.machine_status === "LOCKED" ||
-      info.severity === "CRITICAL" ||
-      info.severity === "HIGH"
+      severity === "CRITICAL" ||
+      severity === "HIGH"
     ) {
       return { backgroundColor: "#FF4D4D", textColor: "#FFFFFF" };
     }
     // 경고는 노란색
-    if (info.severity === "MEDIUM") {
+    if (severity === "MEDIUM") {
       return { backgroundColor: "#F1C40F", textColor: "#000000" };
     }
     // 일반적인 경우는 라이트/다크 모드에 따른 배경색
@@ -54,7 +67,7 @@ export default function AllLogScreen() {
 
   const renderLogItem = ({ item }: { item: RawLog }) => {
     const style = getStatusStyle(item);
-    const info = item.body.status_info[0] || { msg: "No Message" };
+    const info = item.body.status_info?.[0];
 
     return (
       <View style={[styles.logRow, { backgroundColor: style.backgroundColor }]}>
@@ -82,7 +95,7 @@ export default function AllLogScreen() {
             style={[styles.cellText, { color: style.textColor }]}
             numberOfLines={1}
           >
-            {info.msg}
+            {formatLogMsg(info)}
           </Text>
         </View>
       </View>
@@ -120,7 +133,9 @@ export default function AllLogScreen() {
         </View>
         <FlatList
           data={logs}
-          keyExtractor={(item, index) => item.body.sequence.toString() + index}
+          keyExtractor={(item) =>
+            `${item.header.device_id}__${item.body.sequence}__${item.body.timestamp}`
+          }
           renderItem={renderLogItem}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={

@@ -7,8 +7,7 @@ import { CURRENT_LOGIN_ID, MOCK_USER_LIST } from "@/mock/userData";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
-import * as Notifications from "expo-notifications";
-import { useRouter } from "expo-router";
+import { Href, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   Alert,
@@ -33,9 +32,6 @@ export default function MyPageScreen() {
     MOCK_USER_LIST[0];
 
   const [isPushEnabled, setIsPushEnabled] = useState(currentUser.isPushEnabled);
-  const [refreshInterval, setRefreshInterval] = useState(
-    currentUser.serverSettings.interval,
-  );
 
   const [serverIp, setServerIp] = useState("");
   const [serverPort, setServerPort] = useState("");
@@ -76,17 +72,6 @@ export default function MyPageScreen() {
         },
       },
     ]);
-  };
-
-  const handleTestNotification = async () => {
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: "테스트 알림 🔔",
-        body: "알림이 정상적으로 작동하고 있습니다.",
-        sound: "default",
-      },
-      trigger: null,
-    });
   };
 
   const imageSource = getWorkerImage(currentUser.loginId);
@@ -160,12 +145,13 @@ export default function MyPageScreen() {
             </View>
           </ThemedView>
         </View>
-
+{/*
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>알림 설정</ThemedText>
           <ThemedView
             style={[styles.card, { borderColor: Colors[theme].border }]}
           >
+            // 푸시 알림 토글 — 추후 구현 예정
             <View style={styles.settingRow}>
               <View style={{ flex: 1 }}>
                 <ThemedText style={styles.settingLabel}>푸시 알림</ThemedText>
@@ -179,41 +165,12 @@ export default function MyPageScreen() {
                 trackColor={{ false: "#CBD5E1", true: "#3055C1" }}
               />
             </View>
-            <View style={styles.settingRow}>
-              <View style={{ flex: 1 }}>
-                <ThemedText style={styles.settingLabel}>
-                  갱신 주기 (ms)
-                </ThemedText>
-                <ThemedText style={styles.settingDesc}>
-                  데이터 폴링 간격 설정
-                </ThemedText>
-              </View>
-              <TextInput
-                style={[
-                  styles.smallInput,
-                  {
-                    backgroundColor: Colors[theme].background,
-                    color: Colors[theme].text,
-                  },
-                ]}
-                value={refreshInterval}
-                onChangeText={setRefreshInterval}
-                keyboardType="numeric"
-              />
-            </View>
-            <TouchableOpacity
-              style={styles.testButton}
-              onPress={handleTestNotification}
-            >
-              <ThemedText style={styles.testButtonText}>
-                테스트 알림 보내기
-              </ThemedText>
-            </TouchableOpacity>
+            
           </ThemedView>
         </View>
-
+*/}
         <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>管理局 메뉴</ThemedText>
+          <ThemedText style={styles.sectionTitle}>메뉴</ThemedText>
           <ThemedView
             style={[styles.card, { borderColor: Colors[theme].border }]}
           >
@@ -233,7 +190,10 @@ export default function MyPageScreen() {
                 color="#CBD5E1"
               />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.menuItem}>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => router.push("/alarm-history" as Href)}
+            >
               <MaterialCommunityIcons
                 name="history"
                 size={24}
@@ -317,23 +277,6 @@ const styles = StyleSheet.create({
     padding: 10,
     fontSize: 16,
   },
-  smallInput: {
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    borderRadius: 8,
-    padding: 8,
-    width: 80,
-    textAlign: "center",
-    fontSize: 15,
-  },
-  testButton: {
-    backgroundColor: "#F0F4FF",
-    padding: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 5,
-  },
-  testButtonText: { color: "#3055C1", fontWeight: "700" },
   settingRow: {
     flexDirection: "row",
     justifyContent: "space-between",

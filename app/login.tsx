@@ -22,6 +22,8 @@ import {
   updateServerSettings,
 } from "../mock/userData";
 import { setCurrentUserId } from "../services/alertManager";
+import { fetchDeviceSummaries } from "../services/apiService";
+import { runBackgroundPrefetch } from "../services/prefetchService";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -84,6 +86,10 @@ export default function LoginScreen() {
         setCurrentUserId(userId);
         Alert.alert("로그인 성공", `${name}님, 환영합니다!`);
         router.replace("/(tabs)");
+        // 로그인 후 백그라운드로 장비 상세 + 통계 미리 fetch (WiFi 전환 대비)
+        fetchDeviceSummaries()
+          .then((devices) => runBackgroundPrefetch(devices.map((d) => d.deviceId)))
+          .catch(() => {});
       } else {
         console.error("[Login] ❌ 토큰 없음 - 서버 응답:", loginData);
         Alert.alert("로그인 실패", "서버 응답 형식이 올바르지 않습니다.");
