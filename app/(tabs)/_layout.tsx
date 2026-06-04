@@ -183,6 +183,7 @@ export default function TabLayout() {
           "statistics/weekly",
           "statistics/monthly",
           "statistics/yearly",
+          "statistics/report",
         ].map((name) => (
           <Tabs.Screen key={name} name={name} options={{ href: null }} />
         ))}

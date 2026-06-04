@@ -2,7 +2,7 @@ import PageHeader from "@/components/PageHeader";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import apiClient from "@/services/apiClient";
-import { Stack, useFocusEffect } from "expo-router";
+import { Stack, useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -30,9 +30,11 @@ interface YearlyStatsResponse {
     avg_humidity: number;
     avg_vibration: number;
   }[];
+  reporting_sentences?: string[];
 }
 
 export default function YearlyStatisticsScreen() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<YearlyStatsResponse | null>(null);
   const theme = useColorScheme() ?? "light";
@@ -221,6 +223,24 @@ export default function YearlyStatisticsScreen() {
             )}
           </ThemedView>
         ))}
+
+        {/* 리포트 보기 버튼 */}
+        <TouchableOpacity
+          style={[styles.reportBtn, { backgroundColor: Colors[theme].tint }]}
+          onPress={() => {
+            router.push({
+              pathname: "./report",
+              params: {
+                title: `연간 리포트 (${data.target_year}년)`,
+                sentences: JSON.stringify(data.reporting_sentences || []),
+              },
+            });
+          }}
+        >
+          <ThemedText style={styles.reportBtnText}>
+            📝 인공지능 분석 리포트 보기
+          </ThemedText>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -248,4 +268,16 @@ const styles = StyleSheet.create({
   riskCardContent: { alignItems: "center", marginTop: 10 },
   riskValue: { fontSize: 24, fontWeight: "bold" },
   chartHolder: { alignItems: "center", marginTop: 15 },
+  reportBtn: {
+    marginVertical: 12,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  reportBtnText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "bold",
+  },
 });

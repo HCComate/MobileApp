@@ -2,7 +2,7 @@ import PageHeader from "@/components/PageHeader";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import apiClient from "@/services/apiClient";
-import { Stack, useFocusEffect } from "expo-router";
+import { Stack, useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -33,9 +33,11 @@ interface MonthlyStatsResponse {
   }[];
   error_accumulation_by_device: { device_id: string; total_error: number }[];
   error_rate_by_part: { part_location: string; percentage: number }[];
+  reporting_sentences?: string[];
 }
 
 export default function MonthlyStatisticsScreen() {
+  const router = useRouter();
   const [loading, setLoading] = useState<boolean>(true);
   const [data, setData] = useState<MonthlyStatsResponse | null>(null);
   const theme = useColorScheme() ?? "light";
@@ -269,6 +271,24 @@ export default function MonthlyStatisticsScreen() {
             </ScrollView>
           )}
         </ThemedView>
+
+        {/* 리포트 보기 버튼 */}
+        <TouchableOpacity
+          style={[styles.reportBtn, { backgroundColor: Colors[theme].tint }]}
+          onPress={() => {
+            router.push({
+              pathname: "./report",
+              params: {
+                title: `월간 리포트 (${data.target_month})`,
+                sentences: JSON.stringify(data.reporting_sentences || []),
+              },
+            });
+          }}
+        >
+          <ThemedText style={styles.reportBtnText}>
+            📝 인공지능 분석 리포트 보기
+          </ThemedText>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -294,4 +314,16 @@ const styles = StyleSheet.create({
   arrow: { fontSize: 12 },
   chartHolder: { alignItems: "center", marginTop: 10 },
   horizontalScroll: { marginTop: 10, paddingBottom: 20 },
+  reportBtn: {
+    marginVertical: 12,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  reportBtnText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "bold",
+  },
 });

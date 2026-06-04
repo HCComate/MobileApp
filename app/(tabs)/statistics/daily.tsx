@@ -2,7 +2,7 @@ import PageHeader from "@/components/PageHeader";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import apiClient from "@/services/apiClient";
-import { Stack, useFocusEffect } from "expo-router";
+import { Stack, useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -44,9 +44,11 @@ interface DailyStatsResponse {
     CRITICAL: number;
   };
   log_count_by_device: { device_id: string; count: number }[];
+  reporting_sentences?: string[];
 }
 
 export default function DailyStatisticsScreen() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [data, setData] = useState<DailyStatsResponse | null>(null);
@@ -337,6 +339,24 @@ export default function DailyStatisticsScreen() {
             </View>
           )}
         </ThemedView>
+
+        {/* 리포트 보기 버튼 */}
+        <TouchableOpacity
+          style={[styles.reportBtn, { backgroundColor: Colors[theme].tint }]}
+          onPress={() => {
+            router.push({
+              pathname: "./report",
+              params: {
+                title: `일간 리포트 (${data.target_date})`,
+                sentences: JSON.stringify(data.reporting_sentences || []),
+              },
+            });
+          }}
+        >
+          <ThemedText style={styles.reportBtnText}>
+            📝 인공지능 분석 리포트 보기
+          </ThemedText>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -379,5 +399,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginTop: 15,
+  },
+  reportBtn: {
+    marginHorizontal: 16,
+    marginVertical: 12,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  reportBtnText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "bold",
   },
 });

@@ -4,7 +4,7 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { Colors } from "@/constants/Colors";
 import apiClient from "@/services/apiClient";
-import { Stack, useFocusEffect } from "expo-router";
+import { Stack, useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -29,9 +29,11 @@ interface WeeklyStatsResponse {
   sensor_anomaly_by_day: { day: string; anomaly_count: number }[];
   top5_error_codes: { code: string; count: number }[];
   status_distribution: { RUN: number; ERROR: number; IDLE: number };
+  reporting_sentences?: string[];
 }
 
 export default function WeeklyStatisticsScreen() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<WeeklyStatsResponse | null>(null);
   const theme = useColorScheme() ?? "light";
@@ -48,10 +50,11 @@ export default function WeeklyStatisticsScreen() {
     const today = new Date();
     const formattedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
+    // ★ [수정] .then 및 .catch 매개변수에 명시적 타입 지정을 적용하여 Implicit Any 에러 차단
     apiClient
       .get(`/api/stats/weekly?date=${formattedDate}`)
-      .then((res) => setData(res.data))
-      .catch((e) => console.error(e))
+      .then((res: any) => setData(res.data))
+      .catch((e: any) => console.error(e))
       .finally(() => setLoading(false));
   };
 
@@ -278,6 +281,24 @@ export default function WeeklyStatisticsScreen() {
             </View>
           )}
         </ThemedView>
+
+        {/* 리포트 보기 버튼 */}
+        <TouchableOpacity
+          style={[styles.reportBtn, { backgroundColor: Colors[theme].tint }]}
+          onPress={() => {
+            router.push({
+              pathname: "./report",
+              params: {
+                title: `주간 리포트 (${data.target_week})`,
+                sentences: JSON.stringify(data.reporting_sentences || []),
+              },
+            });
+          }}
+        >
+          <ThemedText style={styles.reportBtnText}>
+            📝 인공지능 분석 리포트 보기
+          </ThemedText>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -312,4 +333,16 @@ const styles = StyleSheet.create({
   },
   infoLabel: { fontSize: 13, fontWeight: "700" },
   infoValue: { fontSize: 13, fontWeight: "600" },
+  reportBtn: {
+    marginVertical: 12,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  reportBtnText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "bold",
+  },
 });
