@@ -32,7 +32,9 @@ export default function LoginScreen() {
   const [id, setId] = useState("");
   const [password, setPassword] = useState("");
   // Android 에뮬레이터에서 호스트 PC는 10.0.2.2, iOS/Web은 localhost
-  const [serverIp, setServerIp] = useState(Platform.OS === "android" ? "10.0.2.2" : "localhost");
+  const [serverIp, setServerIp] = useState(
+    Platform.OS === "android" ? "10.0.2.2" : "localhost",
+  );
   const [serverPort, setServerPort] = useState("8080");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -67,8 +69,11 @@ export default function LoginScreen() {
 
       if (token) {
         await AsyncStorage.setItem("userToken", token);
-        console.log("[Login] ✓ 토큰 저장 완료:", token.substring(0, 30) + "...");
-        
+        console.log(
+          "[Login] ✓ 토큰 저장 완료:",
+          token.substring(0, 30) + "...",
+        );
+
         await AsyncStorage.setItem("serverIp", trimmedIp);
         await AsyncStorage.setItem("serverPort", trimmedPort);
         await AsyncStorage.setItem("userId", userId);
@@ -87,7 +92,17 @@ export default function LoginScreen() {
       console.error("[Login Error]:", error);
 
       if (error.response) {
-        Alert.alert("로그인 실패", "아이디 또는 비밀번호가 올바르지 않습니다.");
+        if (error.response.status === 409) {
+          Alert.alert(
+            "로그인 실패",
+            "이미 다른 기기에서 로그인 중인 아이디입니다.\n기존 기기에서 로그아웃 후 다시 시도해주세요.",
+          );
+        } else {
+          Alert.alert(
+            "로그인 실패",
+            "아이디 또는 비밀번호가 올바르지 않습니다.",
+          );
+        }
       } else {
         console.log("[Login] 서버 연결 실패 → 목업 모드로 전환");
         updateServerSettings(trimmedIp, trimmedPort, false);
