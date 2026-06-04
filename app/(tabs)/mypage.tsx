@@ -4,6 +4,7 @@ import { ThemedView } from "@/components/themed-view";
 import { Colors } from "@/constants/Colors";
 import { getWorkerImage } from "@/constants/image";
 import { CURRENT_LOGIN_ID, MOCK_USER_LIST } from "@/mock/userData";
+import { getPushEnabled, setPushEnabled } from "@/services/alertManager";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
@@ -31,7 +32,7 @@ export default function MyPageScreen() {
     MOCK_USER_LIST.find((user) => user.loginId === CURRENT_LOGIN_ID) ||
     MOCK_USER_LIST[0];
 
-  const [isPushEnabled, setIsPushEnabled] = useState(currentUser.isPushEnabled);
+  const [isPushEnabled, setIsPushEnabled] = useState(getPushEnabled());
 
   const [serverIp, setServerIp] = useState("");
   const [serverPort, setServerPort] = useState("");
@@ -53,12 +54,27 @@ export default function MyPageScreen() {
       const savedPort = await AsyncStorage.getItem("serverPort");
       setServerIp(savedIp || currentUser.serverSettings.ip);
       setServerPort(savedPort || currentUser.serverSettings.port);
+
+      const savedPush = await AsyncStorage.getItem("pushEnabled");
+      if (savedPush !== null) {
+        const enabled = savedPush === "true";
+        setIsPushEnabled(enabled);
+        setPushEnabled(enabled);
+      }
     };
     loadSettings();
   }, [currentUser.serverSettings.ip, currentUser.serverSettings.port]);
 
-  const handleSaveSettings = () => {
-    Alert.alert("설정 저장", "알림 설정이 로컬에 반영되었습니다.");
+  const handlePushToggle = async (value: boolean) => {
+    setIsPushEnabled(value);
+    setPushEnabled(value);
+    await AsyncStorage.setItem("pushEnabled", value ? "true" : "false");
+  };
+
+  const handleSaveSettings = async () => {
+    await AsyncStorage.setItem("pushEnabled", isPushEnabled ? "true" : "false");
+    setPushEnabled(isPushEnabled);
+    Alert.alert("설정 저장", "알림 설정이 저장되었습니다.");
   };
 
   const handleLogout = () => {
@@ -160,7 +176,7 @@ export default function MyPageScreen() {
               </View>
               <Switch
                 value={isPushEnabled}
-                onValueChange={setIsPushEnabled}
+                onValueChange={handlePushToggle}
                 trackColor={{ false: "#CBD5E1", true: "#3055C1" }}
               />
             </View>

@@ -39,6 +39,15 @@ export function setCurrentUserId(userId: string | undefined) {
   currentUserId = userId;
 }
 
+// ── 푸시 알림 활성화 여부 (마이페이지 토글과 연동) ──
+let pushEnabled = true;
+export function setPushEnabled(enabled: boolean) {
+  pushEnabled = enabled;
+}
+export function getPushEnabled(): boolean {
+  return pushEnabled;
+}
+
 const activeAlerts = new Map<string, ActiveAlert>();
 const alertHistory: ActiveAlert[] = [];
 const escalationTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -126,7 +135,7 @@ async function sendStepNotification(event: AlertEvent, step: EscalationStep) {
   // 푸시 알림 및 팝업은 대상자에게만
   if (step.targetUser.userId !== currentUserId) return;
 
-  // 팝업 표시
+  // 팝업은 pushEnabled 여부와 무관하게 항상 표시
   alertModalStore.show({
     alertId: event.alertId,
     deviceId: event.deviceId,
@@ -135,6 +144,9 @@ async function sendStepNotification(event: AlertEvent, step: EscalationStep) {
     severity: event.severity,
     timestamp: event.timestamp,
   });
+
+  // 푸시 알림은 마이페이지 설정에 따라 발송
+  if (!pushEnabled) return;
 
   await Notifications.scheduleNotificationAsync({
     content: {

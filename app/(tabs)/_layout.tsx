@@ -6,7 +6,8 @@ import { useColorScheme } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AlertModal from "../../components/AlertModal";
 import { Colors } from "../../constants/Colors";
-import { respondToAlert } from "../../services/alertManager";
+import { respondToAlert, setPushEnabled } from "../../services/alertManager";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   startForegroundService,
   stopForegroundService,
@@ -43,7 +44,11 @@ export default function TabLayout() {
           return;
         }
 
-        // 3. 포그라운드 서비스 시작 (상시 알림 포함)
+        // 3. AsyncStorage에서 pushEnabled 설정 복원
+        const savedPush = await AsyncStorage.getItem("pushEnabled");
+        if (savedPush !== null) setPushEnabled(savedPush === "true");
+
+        // 4. 포그라운드 서비스 시작 (상시 알림 포함)
         console.log("[TabLayout] Starting services...");
         await startForegroundService();
         console.log("[TabLayout] startForegroundService succeeded");
