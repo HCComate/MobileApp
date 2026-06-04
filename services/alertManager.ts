@@ -262,6 +262,53 @@ export function resolveAlert(alertId: string) {
     activeDeviceAlerts.delete(alert.alertEvent.deviceId);
   }
   activeAlerts.delete(alertId);
+  alertMissCounts.delete(alertId);
+}
+
+// ════════════════════════════════════════════════
+//  서버 pending 목록과 로컬 활성 알람 동기화
+// ════════════════════════════════════════════════
+// 서버 /api/alerts/pending 은 "지금 내가 처리할 차례인(current_target)" 알람만 반환한다.
+// 앱은 알림 해제/에스컬레이션 이동을 별도 채널로 통지받지 않으므로, 폴링 결과에
+// 더 이상 들어있지 않은(=내 차례가 끝난) 활성 알람을 직접 정리해야 한다.
+// 정리하지 않으면 activeDeviceAlerts(장치 단위 중복차단) 때문에 같은 장치의
+// 재에스컬레이션/재오류 알람이 영구히 차단된다.
+//
+// 단, 내가 수락(acceptedBy)한 알람은 장비가 LOCKED인 동안 "오류 수정 완료" 전까지
+// 유지해야 하므로 정리 대상에서 제외한다.
+// 일시적 폴링 실패(서버가 빈 배열 반환)로 인한 오정리를 막기 위해, 연속으로
+// pending에서 빠진 횟수가 임계치를 넘은 알람만 정리한다.
+const alertMissCounts = new Map<string, number>();
+const RECONCILE_MISS_THRESHOLD = 2; // 약 6초(3초 폴링 × 2회) 동안 빠져 있으면 정리
+
+export function reconcileActiveAlerts(pendingDeviceIds: Set<string>) {
+  for (const [alertId, active] of activeAlerts) {
+    // 내가 수락한 알람은 유지 (장비 LOCKED 동안 "오류 수정 완료" 전까지)
+    // 거절한 알람은 이미 activeAlerts에서 제거되므로 여기 남는 건 수락분뿐.
+    if (active.response === "ACCEPTED") {
+      alertMissCounts.delete(alertId);
+      continue;
+    }
+
+    const deviceId = active.alertEvent.deviceId;
+    if (pendingDeviceIds.has(deviceId)) {
+      // 여전히 내 차례 → 카운터 초기화
+      alertMissCounts.delete(alertId);
+      continue;
+    }
+
+    // 내 차례가 아님 → 연속 누락 횟수 누적
+    const misses = (alertMissCounts.get(alertId) ?? 0) + 1;
+    if (misses >= RECONCILE_MISS_THRESHOLD) {
+      console.log(
+        `[AlertManager] 동기화 정리: ${deviceId} (더 이상 내 차례 아님 → 모달 닫기/중복차단 해제)`,
+      );
+      alertModalStore.dismiss(alertId);
+      resolveAlert(alertId); // activeAlerts/activeDeviceAlerts/타이머/카운터 정리
+    } else {
+      alertMissCounts.set(alertId, misses);
+    }
+  }
 }
 
 export function getActiveAlertByDeviceId(

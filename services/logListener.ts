@@ -1,6 +1,6 @@
 import { AlertUser } from "../types/alert";
 import { AlertEvent } from "../types/alert";
-import { handleAlertEvent } from "./alertManager";
+import { handleAlertEvent, reconcileActiveAlerts } from "./alertManager";
 import apiClient from "./apiClient";
 import { fetchAlertUsers } from "./apiService";
 
@@ -53,6 +53,13 @@ export async function startLogListener() {
         // (현재 current_target인 동안 반복 폴링돼도 1회만 팝업)
         handleAlertEvent(alertEvent, cachedUsers, true);
       });
+
+      // 서버 pending과 동기화: 더 이상 내 차례가 아닌(에스컬레이션 이동/외부 해제)
+      // 활성 알람을 정리해 같은 장치의 재알림이 중복차단되는 것을 방지.
+      const pendingDeviceIds = new Set<string>(
+        pendingAlerts.map((a: any) => String(a.deviceId)),
+      );
+      reconcileActiveAlerts(pendingDeviceIds);
     } catch (error) {
       // 서버 연결 실패 시 조용히 넘어갑니다.
     }

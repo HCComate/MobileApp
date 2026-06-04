@@ -5,6 +5,7 @@ import { ThemedView } from "@/components/themed-view";
 import { Colors } from "@/constants/Colors";
 import apiClient from "@/services/apiClient";
 import { Stack, useFocusEffect } from "expo-router";
+import ReportingButton from "@/components/ReportingButton";
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -278,6 +279,7 @@ export default function WeeklyStatisticsScreen() {
             </View>
           )}
         </ThemedView>
+        <ReportingButton period="weekly" />
       </ScrollView>
     </SafeAreaView>
   );

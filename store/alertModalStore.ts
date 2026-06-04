@@ -30,6 +30,18 @@ export const alertModalStore = {
     _listeners.forEach((l) => l(nextData));
   },
 
+  // 특정 alertId 알람을 큐에서 제거한다(맨 앞이 아니어도 제거).
+  // 서버가 다음 담당자로 에스컬레이션했거나 외부에서 해제됐을 때, 더 이상
+  // 내 차례가 아닌 모달을 닫기 위해 사용한다.
+  dismiss: (alertId: string) => {
+    const before = _queue.length;
+    _queue = _queue.filter((item) => item.alertId !== alertId);
+    if (_queue.length !== before) {
+      const nextData = _queue.length > 0 ? _queue[0] : null;
+      _listeners.forEach((l) => l(nextData));
+    }
+  },
+
   get: () => (_queue.length > 0 ? _queue[0] : null),
   isActive: () => _queue.length > 0,
 

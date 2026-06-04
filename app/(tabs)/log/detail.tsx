@@ -123,7 +123,7 @@ export default function DeviceDetailLogScreen() {
         <FlatList
           data={filteredLogs}
           keyExtractor={(item) =>
-            `${item.header.device_id}-${item.body.sequence}`
+            `${item.header.device_id}__${item.body.sequence}__${item.body.timestamp}`
           }
           renderItem={renderLogItem}
           ListEmptyComponent={

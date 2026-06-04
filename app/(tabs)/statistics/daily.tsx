@@ -3,6 +3,7 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import apiClient from "@/services/apiClient";
 import { Stack, useFocusEffect } from "expo-router";
+import ReportingButton from "@/components/ReportingButton";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -337,6 +338,7 @@ export default function DailyStatisticsScreen() {
             </View>
           )}
         </ThemedView>
+        <ReportingButton period="daily" />
       </ScrollView>
     </SafeAreaView>
   );

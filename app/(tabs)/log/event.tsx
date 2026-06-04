@@ -7,26 +7,35 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "../../../components/Header";
 import PageHeader from "../../../components/PageHeader";
 import { Colors } from "../../../constants/Colors";
-import { useLogData } from "../../../hooks/updateData";
+import { useEventLogs } from "../../../hooks/useEventLogs";
 import { RawLog } from "../../../mock/Logs";
 import { LogStyles } from "../../../styles/LogStyles";
 import { PageStyles } from "../../../styles/PageStyles";
 
-export default function EventLogScreen() {
-  const logs = useLogData();
-  const theme = useColorScheme() ?? "light";
+// RESOLVED(오류 수정 완료) 로그는 친화적 라벨로 변환해 표시한다.
+// 서버 msg는 "Recovery by {username}" 형식.
+function formatLogMsg(info?: { code?: string; msg?: string }) {
+  if (info?.code === "RESOLVED") {
+    const by = (info.msg ?? "").replace(/recovery by/i, "").trim();
+    return by ? `오류 수정 완료 (${by})` : "오류 수정 완료";
+  }
+  return info?.msg ?? "-";
+}
 
-  // 정상인 로그 아닌 것만 필터링
-  const eventLogs = logs.filter((item) => {
-    const code = item.body.status_info?.[0]?.code;
-    return code !== undefined && code !== "NORMAL" && code !== "SV-VS-PR-00";
-  });
+export default function EventLogScreen() {
+  // 서버 전용 엔드포인트(/api/inspections/events)가 ERROR/LOCKED만 골라 내려준다.
+  // 초당 50건 폭주에도 이벤트가 정상 로그에 묻히지 않는다(앱 측 필터 불필요).
+  const eventLogs = useEventLogs();
+  const theme = useColorScheme() ?? "light";
 
   const getStatusStyle = (item: RawLog) => {
     const info = item.body.status_info?.[0];
+    const code = info?.code;
     const msg = (info?.msg ?? "").toLowerCase();
 
+    // 오류 수정 완료(RESOLVED) 등 복구 로그는 파란색
     if (
+      code === "RESOLVED" ||
       msg.includes("recovery") ||
       msg.includes("success") ||
       msg.includes("reconnected")
@@ -109,7 +118,7 @@ export default function EventLogScreen() {
               },
             ]}
           >
-            {info.msg}
+            {formatLogMsg(info)}
           </ThemedText>
         </View>
       </View>
@@ -166,7 +175,7 @@ export default function EventLogScreen() {
         <FlatList
           data={eventLogs}
           keyExtractor={(item) =>
-            `${item.header.device_id}-${item.body.sequence}`
+            `${item.header.device_id}__${item.body.sequence}__${item.body.timestamp}`
           }
           renderItem={renderLogItem}
           showsVerticalScrollIndicator={false}

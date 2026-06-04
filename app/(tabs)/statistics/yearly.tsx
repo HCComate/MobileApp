@@ -3,6 +3,7 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import apiClient from "@/services/apiClient";
 import { Stack, useFocusEffect } from "expo-router";
+import ReportingButton from "@/components/ReportingButton";
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -221,6 +222,7 @@ export default function YearlyStatisticsScreen() {
             )}
           </ThemedView>
         ))}
+        <ReportingButton period="yearly" />
       </ScrollView>
     </SafeAreaView>
   );

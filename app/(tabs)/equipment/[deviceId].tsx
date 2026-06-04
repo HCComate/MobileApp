@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "../../../components/Header";
+import VisionImage from "../../../components/VisionImage";
 import { Colors } from "../../../constants/Colors";
 import {
   EQ_COLORS,
@@ -29,7 +30,9 @@ import {
   resolveAlertByDeviceId,
   subscribeAlertChanges,
 } from "../../../services/alertManager";
-import apiClient from "../../../services/apiClient"; // api 대신 apiClient 사용 권장 (baseURL 설정 반영)
+import apiClient from "../../../services/apiClient"; 
+import { mapToDeviceDetail } from "../../../services/dtoMapper";
+import { deviceStore } from "../../../store/deviceStore"; // 스토어 import
 import {
   DeviceDetail,
   Direction,
@@ -47,15 +50,44 @@ export default function DeviceDetailScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [serverDevice, setServerDevice] = useState<DeviceDetail | null>(null);
 
-  // 1. 서버 데이터 fetch + 5초 폴링
+  // 1. 서버 데이터 fetch + 5초 폴링 (확인된 실제 스토어 메서드로 동기화)
   useEffect(() => {
     if (!deviceId) return;
+
+    setServerDevice(null);
+    setIsLoading(true);
 
     const fetchDetail = async () => {
       try {
         const response = await apiClient.get(`/api/devices/${deviceId}/detail`);
-        const actualData = response.data.success ? response.data.data : response.data;
-        if (actualData) setServerDevice(actualData);
+        const actualData = response.data?.success ? response.data.data : response.data;
+        
+        if (!actualData) return;
+        
+        const mapped = mapToDeviceDetail(actualData);
+        
+        if (!mapped.deviceId || mapped.deviceId === deviceId) {
+          setServerDevice(mapped);
+
+          // ★ [수정] Map 구조의 실제 스토어 메서드(setDetail, get, update)를 직접 호출하여 데이터 동기화 ★
+          if (deviceStore) {
+            // [1] 상세 정보 스토어 갱신
+            deviceStore.setDetail(mapped);
+
+            // [2] 메인 목록용 요약본도 함께 이미지 누락을 방어하기 위해 동기화
+            const existSummary = deviceStore.get(deviceId);
+            if (existSummary) {
+              deviceStore.update({
+                ...existSummary,
+                machineStatus: mapped.machineStatus,
+                visionResult: mapped.visionResult.result,
+                imageUrl: mapped.visionResult.imageUrl, // 최신 폴링 이미지 동기화
+                defectType: mapped.visionResult.defectType,
+                lastSequence: mapped.sequence,
+              });
+            }
+          }
+        }
       } catch (error: any) {
         console.error("장비 상세 데이터 요청 실패:", error.response?.data || error.message);
       } finally {
@@ -84,11 +116,10 @@ export default function DeviceDetailScreen() {
   }, [logs, checkResolveButton]);
 
   useEffect(() => {
-    // 알람 수락 시 즉시 버튼 갱신
     return subscribeAlertChanges(checkResolveButton);
   }, [checkResolveButton]);
 
-  // 3. 렌더링용 데이터 결정 (서버 데이터 우선, 없으면 로그 데이터에서 매핑)
+  // 3. 렌더링용 데이터 결정
   const detail: DeviceDetail | null = useMemo(() => {
     if (serverDevice) return serverDevice;
 
@@ -139,37 +170,20 @@ export default function DeviceDetailScreen() {
     }
   };
 
-  // 로딩 상태 표시
   if (isLoading && !detail) {
     return (
-      <SafeAreaView
-        style={[
-          styles.loadingContainer,
-          { backgroundColor: Colors[theme].background },
-        ]}
-      >
+      <SafeAreaView style={[styles.loadingContainer, { backgroundColor: Colors[theme].background }]}>
         <ActivityIndicator size="large" color="#3B82F6" />
-        <ThemedText style={{ marginTop: 10 }}>
-          장비 데이터를 불러오는 중...
-        </ThemedText>
+        <ThemedText style={{ marginTop: 10 }}>장비 데이터를 불러오는 중...</ThemedText>
       </SafeAreaView>
     );
   }
 
-  // 데이터 없음 표시
   if (!detail) {
     return (
-      <SafeAreaView
-        style={[
-          styles.loadingContainer,
-          { backgroundColor: Colors[theme].background },
-        ]}
-      >
+      <SafeAreaView style={[styles.loadingContainer, { backgroundColor: Colors[theme].background }]}>
         <ThemedText>장비 정보를 찾을 수 없습니다.</ThemedText>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={{ marginTop: 20 }}
-        >
+        <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 20 }}>
           <ThemedText style={{ color: "#3B82F6" }}>뒤로 가기</ThemedText>
         </TouchableOpacity>
       </SafeAreaView>
@@ -179,117 +193,60 @@ export default function DeviceDetailScreen() {
   const statusColor = STATUS_COLOR[detail.machineStatus] || "#94A3B8";
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: Colors[theme].background }]}
-    >
+    <SafeAreaView style={[styles.container, { backgroundColor: Colors[theme].background }]}>
       <Stack.Screen options={{ headerShown: false }} />
-      <StatusBar
-        barStyle={theme === "dark" ? "light-content" : "dark-content"}
-        backgroundColor={Colors[theme].background}
-      />
+      <StatusBar barStyle={theme === "dark" ? "light-content" : "dark-content"} backgroundColor={Colors[theme].background} />
       <Header />
       <ThemedView style={{ flex: 1 }}>
-        <ScrollView
-          style={styles.scrollView}
-          showsVerticalScrollIndicator={false}
-        >
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
           <View style={styles.statusSection}>
-            <View
-              style={[styles.statusBadge, { backgroundColor: statusColor }]}
-            >
-              <ThemedText style={styles.statusBadgeText}>
-                {STATUS_LABEL[detail.machineStatus]}
-              </ThemedText>
+            <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
+              <ThemedText style={styles.statusBadgeText}>{STATUS_LABEL[detail.machineStatus]}</ThemedText>
             </View>
             <ThemedText style={styles.deviceId}>{detail.deviceId}</ThemedText>
             <ThemedText style={styles.modelName}>{detail.modelName}</ThemedText>
           </View>
 
+          <VisionImage
+            vision={{
+              result: detail.visionResult.result,
+              defectType: detail.visionResult.defectType,
+              imageUrl: detail.visionResult.imageUrl,
+            }}
+            iconSize={56}
+            style={[styles.visionImage, { backgroundColor: Colors[theme].border }]}
+          />
+
           <ThemedView style={styles.infoCard}>
             <ThemedText style={styles.cardTitle}>주요 정보</ThemedText>
-            <View
-              style={[
-                styles.divider,
-                { backgroundColor: Colors[theme].border },
-              ]}
-            />
+            <View style={[styles.divider, { backgroundColor: Colors[theme].border }]} />
             <InfoRow label="배치 ID" value={detail.batchId} />
             <InfoRow label="시퀀스" value={String(detail.sequence)} />
             <InfoRow
               label="비전 결과"
               value={detail.visionResult.result}
-              valueColor={
-                detail.visionResult.result === "NG"
-                  ? EQ_COLORS.ngRed
-                  : EQ_COLORS.okGreen
-              }
+              valueColor={detail.visionResult.result === "NG" ? EQ_COLORS.ngRed : EQ_COLORS.okGreen}
             />
           </ThemedView>
 
           <ThemedView style={styles.infoCard}>
             <ThemedText style={styles.cardTitle}>센서 데이터</ThemedText>
-            <View
-              style={[
-                styles.divider,
-                { backgroundColor: Colors[theme].border },
-              ]}
-            />
-            <InfoRow
-              label="온도"
-              value={`${(detail.temperature ?? 0).toFixed(1)}°C`}
-            />
-            <InfoRow
-              label="진동 (X/Y)"
-              value={`${(detail.vibrationX ?? 0).toFixed(2)} / ${(detail.vibrationY ?? 0).toFixed(2)}`}
-            />
-            <InfoRow
-              label="조도"
-              value={`${(detail.illumination ?? 0).toFixed(3)} lux`}
-            />
-            <InfoRow
-              label="습도"
-              value={`${(detail.humidity ?? 0).toFixed(3)} %`}
-            />
+            <View style={[styles.divider, { backgroundColor: Colors[theme].border }]} />
+            <InfoRow label="온도" value={`${(detail.temperature ?? 0).toFixed(1)}°C`} />
+            <InfoRow label="진동 (X/Y)" value={`${(detail.vibrationX ?? 0).toFixed(2)} / ${(detail.vibrationY ?? 0).toFixed(2)}`} />
+            <InfoRow label="조도" value={`${(detail.illumination ?? 0).toFixed(3)} lux`} />
+            <InfoRow label="습도" value={`${(detail.humidity ?? 0).toFixed(3)} %`} />
           </ThemedView>
 
           <ThemedView style={styles.infoCard}>
-            <ThemedText style={styles.cardTitle}>
-              상태 정보 ({detail.statusInfos.length})
-            </ThemedText>
-            <View
-              style={[
-                styles.divider,
-                { backgroundColor: Colors[theme].border },
-              ]}
-            />
+            <ThemedText style={styles.cardTitle}>상태 정보 ({detail.statusInfos.length})</ThemedText>
+            <View style={[styles.divider, { backgroundColor: Colors[theme].border }]} />
             {detail.statusInfos.map((status, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.statusItem,
-                  {
-                    borderLeftColor:
-                      SEVERITY_COLOR[status.severity] || "#CBD5E1",
-                    backgroundColor: Colors[theme].background,
-                  },
-                ]}
-              >
+              <View key={index} style={[styles.statusItem, { borderLeftColor: SEVERITY_COLOR[status.severity] || "#CBD5E1", backgroundColor: Colors[theme].background }]}>
                 <View style={styles.statusItemHeader}>
-                  <ThemedText style={styles.statusCode}>
-                    {status.code}
-                  </ThemedText>
-                  <View
-                    style={[
-                      styles.severityBadge,
-                      {
-                        backgroundColor:
-                          SEVERITY_COLOR[status.severity] || "#CBD5E1",
-                      },
-                    ]}
-                  >
-                    <ThemedText style={styles.severityText}>
-                      {status.severity}
-                    </ThemedText>
+                  <ThemedText style={styles.statusCode}>{status.code}</ThemedText>
+                  <View style={[styles.severityBadge, { backgroundColor: SEVERITY_COLOR[status.severity] || "#CBD5E1" }]}>
+                    <ThemedText style={styles.severityText}>{status.severity}</ThemedText>
                   </View>
                 </View>
                 <ThemedText style={styles.statusMsg}>{status.msg}</ThemedText>
@@ -298,13 +255,8 @@ export default function DeviceDetailScreen() {
           </ThemedView>
 
           {showResolveButton && (
-            <TouchableOpacity
-              style={styles.resolveErrorButton}
-              onPress={handleResolveError}
-            >
-              <ThemedText style={styles.resolveErrorButtonText}>
-                오류 수정 완료
-              </ThemedText>
+            <TouchableOpacity style={styles.resolveErrorButton} onPress={handleResolveError}>
+              <ThemedText style={styles.resolveErrorButtonText}>오류 수정 완료</ThemedText>
             </TouchableOpacity>
           )}
         </ScrollView>
@@ -313,100 +265,40 @@ export default function DeviceDetailScreen() {
   );
 }
 
-// 수정된 InfoRow 컴포넌트
-const InfoRow = ({
-  label,
-  value,
-  valueColor,
-}: {
-  label: string;
-  value: string;
-  valueColor?: string;
-}) => {
-  // 컴포넌트 내부에서useColorScheme을 호출하여 테마 상태를 가져옵니다.
+const InfoRow = ({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) => {
   const currentTheme = useColorScheme() ?? "light";
   const textColor = Colors[currentTheme].text;
 
   return (
     <View style={styles.infoRow}>
-      <ThemedText style={[styles.infoLabel, { color: textColor }]}>
-        {label}
-      </ThemedText>
-      <ThemedText style={[styles.infoValue, { color: valueColor || textColor }]}>
-        {value}
-      </ThemedText>
+      <ThemedText style={[styles.infoLabel, { color: textColor }]}>{label}</ThemedText>
+      <ThemedText style={[styles.infoValue, { color: valueColor || textColor }]}>{value}</ThemedText>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
+  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
   container: { flex: 1 },
   scrollView: { flex: 1, padding: 16 },
-  statusSection: {
-    alignItems: "center",
-    paddingVertical: 24,
-    backgroundColor: EQ_COLORS.headerBg,
-    marginHorizontal: -16,
-    marginTop: -16,
-    marginBottom: 16,
-  },
-  statusBadge: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginBottom: 8,
-  },
+  statusSection: { alignItems: "center", paddingVertical: 24, backgroundColor: EQ_COLORS.headerBg, marginHorizontal: -16, marginTop: -16, marginBottom: 16 },
+  statusBadge: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, marginBottom: 8 },
   statusBadgeText: { color: "#FFF", fontSize: 14, fontWeight: "700" },
   deviceId: { fontSize: 26, fontWeight: "800", color: "#FFF" },
   modelName: { fontSize: 14, color: "#FFF", opacity: 0.8, marginTop: 4 },
-  infoCard: {
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "transparent",
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    marginBottom: 12,
-  },
+  visionImage: { width: "100%", height: 200, borderRadius: 12, marginBottom: 16 },
+  infoCard: { borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: "transparent" },
+  cardTitle: { fontSize: 16, fontWeight: "700", marginBottom: 12 },
   divider: { height: 1, marginBottom: 12 },
-  infoRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 10,
-  },
+  infoRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 10 },
   infoLabel: { fontSize: 14 },
   infoValue: { fontWeight: "600", fontSize: 14 },
-  statusItem: {
-    padding: 12,
-    borderRadius: 8,
-    borderLeftWidth: 4,
-    marginBottom: 10,
-  },
-  statusItemHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 6,
-  },
+  statusItem: { padding: 12, borderRadius: 8, borderLeftWidth: 4, marginBottom: 10 },
+  statusItemHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 },
   statusCode: { fontWeight: "700", fontSize: 14 },
   severityBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
   severityText: { color: "#FFF", fontSize: 10, fontWeight: "700" },
   statusMsg: { fontSize: 13 },
-  resolveErrorButton: {
-    backgroundColor: "#10B981",
-    padding: 16,
-    borderRadius: 12,
-    alignItems: "center",
-    marginTop: 10,
-    marginBottom: 20,
-  },
+  resolveErrorButton: { backgroundColor: "#10B981", padding: 16, borderRadius: 12, alignItems: "center", marginTop: 10, marginBottom: 20 },
   resolveErrorButtonText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
 });
