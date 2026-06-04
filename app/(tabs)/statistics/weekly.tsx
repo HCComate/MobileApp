@@ -30,6 +30,7 @@ interface WeeklyStatsResponse {
   sensor_anomaly_by_day: { day: string; anomaly_count: number }[];
   top5_error_codes: { code: string; count: number }[];
   status_distribution: { RUN: number; ERROR: number; IDLE: number };
+  reporting_sentences?: string[];
 }
 
 export default function WeeklyStatisticsScreen() {

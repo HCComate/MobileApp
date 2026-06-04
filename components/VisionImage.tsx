@@ -26,8 +26,15 @@ interface Props {
 
 export default function VisionImage({ vision, style, iconSize = 28 }: Props) {
   const source = resolveVisionImageSource(vision);
+  // 이미지 로드 실패 시 빈칸으로 남지 않도록 fallback으로 전환.
+  // (source가 있으면 <Image>를 그리는데, 번들/에셋 로드가 실패하면 onError 없이는
+  //  아무것도 안 보였다 — 카메라 아이콘이라도 떠야 "로드 실패"임을 알 수 있다.)
+  const [failed, setFailed] = React.useState(false);
+  React.useEffect(() => {
+    setFailed(false);
+  }, [source]);
 
-  if (!source) {
+  if (!source || failed) {
     return (
       <View style={[styles.fallback, style]}>
         <Text style={{ fontSize: iconSize }}>🎥</Text>
@@ -40,6 +47,13 @@ export default function VisionImage({ vision, style, iconSize = 28 }: Props) {
       source={source}
       style={style as StyleProp<ImageStyle>}
       resizeMode="cover"
+      onError={(e) => {
+        console.warn(
+          "[VisionImage] 이미지 로드 실패:",
+          e?.nativeEvent?.error ?? e,
+        );
+        setFailed(true);
+      }}
     />
   );
 }

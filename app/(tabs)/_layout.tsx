@@ -113,6 +113,11 @@ export default function TabLayout() {
     <>
       {/* <LastErrorBanner /> */}
       <Tabs
+        // 모든 페이지(통계·로그·상세 등)가 이 하단 탭 네비게이터의 숨김 탭이라,
+        // 기본 backBehavior(firstRoute)에선 뒤로가기가 이전 페이지가 아닌 첫 탭(홈)으로
+        // 가버린다. "history"로 두면 방문 순서대로 직전 페이지로 돌아간다
+        // (하드웨어 뒤로가기 + PageHeader '‹' 버튼 + router.back() 모두 적용).
+        backBehavior="history"
         screenOptions={{
           tabBarActiveTintColor: isDark ? "#FFFFFF" : Colors.light.tint,
           tabBarInactiveTintColor: isDark ? "#FFFFFF" : Colors.light.tint,

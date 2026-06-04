@@ -34,6 +34,7 @@ interface MonthlyStatsResponse {
   }[];
   error_accumulation_by_device: { device_id: string; total_error: number }[];
   error_rate_by_part: { part_location: string; percentage: number }[];
+  reporting_sentences?: string[];
 }
 
 export default function MonthlyStatisticsScreen() {

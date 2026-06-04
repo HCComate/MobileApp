@@ -31,6 +31,7 @@ interface YearlyStatsResponse {
     avg_humidity: number;
     avg_vibration: number;
   }[];
+  reporting_sentences?: string[];
 }
 
 export default function YearlyStatisticsScreen() {

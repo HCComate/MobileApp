@@ -45,6 +45,7 @@ interface DailyStatsResponse {
     CRITICAL: number;
   };
   log_count_by_device: { device_id: string; count: number }[];
+  reporting_sentences?: string[];
 }
 
 export default function DailyStatisticsScreen() {
