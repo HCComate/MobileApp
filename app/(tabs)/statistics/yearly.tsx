@@ -2,6 +2,7 @@ import PageHeader from "@/components/PageHeader";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import apiClient from "@/services/apiClient";
+import { getCachedStats, setCachedStats } from "@/services/prefetchService";
 import { Stack, useFocusEffect } from "expo-router";
 import ReportingButton from "@/components/ReportingButton";
 import React, { useCallback, useState } from "react";
@@ -48,13 +49,23 @@ export default function YearlyStatisticsScreen() {
     STABILITY: false,
   });
 
-  const fetchStatistics = () => {
-    const currentYear = new Date().getFullYear().toString();
-    apiClient
-      .get(`/api/stats/yearly?year=${currentYear}`)
-      .then((res) => setData(res.data))
-      .catch((e) => console.error(e))
-      .finally(() => setLoading(false));
+  const fetchStatistics = async () => {
+    try {
+      const cached = await getCachedStats("yearly");
+      if (cached) {
+        setData(cached);
+        setLoading(false);
+      }
+
+      const currentYear = new Date().getFullYear().toString();
+      const res = await apiClient.get(`/api/stats/yearly?year=${currentYear}`);
+      setData(res.data);
+      await setCachedStats("yearly", res.data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // 화면에 포커스될 때마다 fetchStatistics 실행

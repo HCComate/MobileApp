@@ -90,6 +90,9 @@ export default function DeviceDetailScreen() {
         }
       } catch (error: any) {
         console.error("장비 상세 데이터 요청 실패:", error.response?.data || error.message);
+        // 네트워크 실패 시 프리페치 캐시 폴백
+        const cached = deviceStore.getDetail(deviceId);
+        if (cached) setServerDevice(cached);
       } finally {
         setIsLoading(false);
       }

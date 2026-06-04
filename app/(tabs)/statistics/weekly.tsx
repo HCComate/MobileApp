@@ -4,6 +4,7 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { Colors } from "@/constants/Colors";
 import apiClient from "@/services/apiClient";
+import { getCachedStats, setCachedStats } from "@/services/prefetchService";
 import { Stack, useFocusEffect } from "expo-router";
 import ReportingButton from "@/components/ReportingButton";
 import React, { useCallback, useState } from "react";
@@ -46,15 +47,24 @@ export default function WeeklyStatisticsScreen() {
     TOP5: false,
   });
 
-  const fetchStatistics = () => {
-    const today = new Date();
-    const formattedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  const fetchStatistics = async () => {
+    try {
+      const cached = await getCachedStats("weekly");
+      if (cached) {
+        setData(cached);
+        setLoading(false);
+      }
 
-    apiClient
-      .get(`/api/stats/weekly?date=${formattedDate}`)
-      .then((res) => setData(res.data))
-      .catch((e) => console.error(e))
-      .finally(() => setLoading(false));
+      const today = new Date();
+      const formattedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+      const res = await apiClient.get(`/api/stats/weekly?date=${formattedDate}`);
+      setData(res.data);
+      await setCachedStats("weekly", res.data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // 화면에 포커스될 때마다 fetchStatistics 실행

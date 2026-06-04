@@ -2,6 +2,7 @@ import PageHeader from "@/components/PageHeader";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import apiClient from "@/services/apiClient";
+import { getCachedStats, setCachedStats } from "@/services/prefetchService";
 import { Stack, useFocusEffect } from "expo-router";
 import ReportingButton from "@/components/ReportingButton";
 import React, { useCallback, useEffect, useState } from "react";
@@ -65,13 +66,20 @@ export default function DailyStatisticsScreen() {
 
   const fetchStatistics = async () => {
     try {
+      // 캐시 우선 확인 — 있으면 즉시 표시
+      const cached = await getCachedStats("daily");
+      if (cached) {
+        setData(cached);
+        setLoading(false);
+      }
+
       const today = new Date();
       const formattedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-
       const response = await apiClient.get(
         `/api/stats/daily?date=${formattedDate}`,
       );
       setData(response.data);
+      await setCachedStats("daily", response.data);
     } catch (error) {
       console.error("Daily fetch error:", error);
     } finally {

@@ -2,6 +2,7 @@ import PageHeader from "@/components/PageHeader";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import apiClient from "@/services/apiClient";
+import { getCachedStats, setCachedStats } from "@/services/prefetchService";
 import { Stack, useFocusEffect } from "expo-router";
 import ReportingButton from "@/components/ReportingButton";
 import React, { useCallback, useState } from "react";
@@ -49,14 +50,24 @@ export default function MonthlyStatisticsScreen() {
     PART: true,
   });
 
-  const fetchStatistics = () => {
-    const today = new Date();
-    const formattedMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
-    apiClient
-      .get(`/api/stats/monthly?month=${formattedMonth}`)
-      .then((res) => setData(res.data))
-      .catch((e) => console.error(e))
-      .finally(() => setLoading(false));
+  const fetchStatistics = async () => {
+    try {
+      const cached = await getCachedStats("monthly");
+      if (cached) {
+        setData(cached);
+        setLoading(false);
+      }
+
+      const today = new Date();
+      const formattedMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+      const res = await apiClient.get(`/api/stats/monthly?month=${formattedMonth}`);
+      setData(res.data);
+      await setCachedStats("monthly", res.data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // 페이지에 다시 들어올 때마다 데이터 새로고침

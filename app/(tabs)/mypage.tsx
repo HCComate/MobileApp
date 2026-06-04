@@ -145,13 +145,13 @@ export default function MyPageScreen() {
             </View>
           </ThemedView>
         </View>
-
+{/*
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>알림 설정</ThemedText>
           <ThemedView
             style={[styles.card, { borderColor: Colors[theme].border }]}
           >
-            {/* 푸시 알림 토글 — 추후 구현 예정
+            // 푸시 알림 토글 — 추후 구현 예정
             <View style={styles.settingRow}>
               <View style={{ flex: 1 }}>
                 <ThemedText style={styles.settingLabel}>푸시 알림</ThemedText>
@@ -165,10 +165,10 @@ export default function MyPageScreen() {
                 trackColor={{ false: "#CBD5E1", true: "#3055C1" }}
               />
             </View>
-            */}
+            
           </ThemedView>
         </View>
-
+*/}
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>메뉴</ThemedText>
           <ThemedView
