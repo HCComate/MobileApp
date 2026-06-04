@@ -1,10 +1,10 @@
 import PageHeader from "@/components/PageHeader";
+import ReportingButton from "@/components/ReportingButton";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import apiClient from "@/services/apiClient";
 import { getCachedStats, setCachedStats } from "@/services/prefetchService";
 import { Stack, useFocusEffect } from "expo-router";
-import ReportingButton from "@/components/ReportingButton";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -390,5 +390,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginTop: 15,
+  },
+  reportBtn: {
+    marginHorizontal: 16,
+    marginVertical: 12,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  reportBtnText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "bold",
   },
 });

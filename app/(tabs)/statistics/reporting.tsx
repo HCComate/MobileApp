@@ -15,12 +15,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-// 기간별 화면 제목 + 서버 엔드포인트 매핑
 const PERIOD_INFO: Record<string, { title: string; endpoint: string }> = {
-  daily: { title: "일간 리포트", endpoint: "/api/stats/daily" },
-  weekly: { title: "주간 리포트", endpoint: "/api/stats/weekly" },
-  monthly: { title: "월간 리포트", endpoint: "/api/stats/monthly" },
-  yearly: { title: "연간 리포트", endpoint: "/api/stats/yearly" },
+  daily: { title: "일간 분석 리포트", endpoint: "/api/stats/daily" },
+  weekly: { title: "주간 분석 리포트", endpoint: "/api/stats/weekly" },
+  monthly: { title: "월간 분석 리포트", endpoint: "/api/stats/monthly" },
+  yearly: { title: "연간 분석 리포트", endpoint: "/api/stats/yearly" },
 };
 
 export default function ReportingScreen() {
@@ -33,10 +32,9 @@ export default function ReportingScreen() {
   const [sentences, setSentences] = useState<string[]>([]);
   const [error, setError] = useState(false);
 
-  const fetchReport = async () => {
+  const fetchReport = useCallback(async () => {
     try {
       setError(false);
-      // 서버(AdminPC)의 통계 응답에는 reporting_sentences(문장 배열)가 포함되어 있다.
       const res = await apiClient.get(info.endpoint);
       const data = res.data?.data ?? res.data ?? {};
       const list = Array.isArray(data.reporting_sentences)
@@ -51,15 +49,13 @@ export default function ReportingScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [info.endpoint]);
 
-  // 화면에 들어올 때마다 최신 리포트 조회
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
       fetchReport();
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [period]),
+    }, [fetchReport]),
   );
 
   return (
@@ -73,9 +69,12 @@ export default function ReportingScreen() {
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
+            tintColor={Colors[theme].tint}
+            colors={[Colors[theme].tint]}
             onRefresh={() => {
               setRefreshing(true);
               fetchReport();
@@ -89,28 +88,51 @@ export default function ReportingScreen() {
           </View>
         ) : error ? (
           <View style={styles.center}>
+            <ThemedText style={styles.errorIcon}>⚠️</ThemedText>
             <ThemedText style={styles.emptyText}>
               리포트를 불러올 수 없습니다.
             </ThemedText>
             <ThemedText style={styles.emptySub}>
-              아래로 당겨 새로고침 해보세요.
+              네트워크 상태를 확인하고 아래로 당겨서 새로고침 해주세요.
             </ThemedText>
           </View>
         ) : sentences.length === 0 ? (
           <View style={styles.center}>
+            <ThemedText style={styles.errorIcon}>📋</ThemedText>
             <ThemedText style={styles.emptyText}>
-              표시할 리포트가 없습니다.
+              분석된 리포트 데이터가 없습니다.
+            </ThemedText>
+            <ThemedText style={styles.emptySub}>
+              정각 주기로 새로운 로그 분석이 생성됩니다.
             </ThemedText>
           </View>
         ) : (
-          sentences.map((s, i) => (
-            <ThemedView
-              key={i}
-              style={[styles.card, { borderColor: Colors[theme].border }]}
-            >
-              <ThemedText style={styles.cardText}>{s}</ThemedText>
-            </ThemedView>
-          ))
+          <View style={styles.reportContainer}>
+            <ThemedText style={styles.metaText}>
+              • AI 기반 공정 모니터링 자동 요약 요약본입니다.
+            </ThemedText>
+            {sentences.map((s, i) => (
+              <ThemedView
+                key={i}
+                style={[
+                  styles.card,
+                  {
+                    borderColor: Colors[theme].border,
+                    backgroundColor: theme === "dark" ? "#1E1E1E" : "#F9FAFB",
+                  },
+                ]}
+              >
+                <View style={styles.bulletRow}>
+                  <ThemedText
+                    style={[styles.bullet, { color: Colors[theme].tint }]}
+                  >
+                    •
+                  </ThemedText>
+                  <ThemedText style={styles.cardText}>{s}</ThemedText>
+                </View>
+              </ThemedView>
+            ))}
+          </View>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -120,15 +142,57 @@ export default function ReportingScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scroll: { flex: 1 },
-  content: { padding: 16, paddingBottom: 40 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", marginTop: 80 },
-  emptyText: { fontSize: 15, fontWeight: "600" },
-  emptySub: { fontSize: 12, opacity: 0.6, marginTop: 8 },
+  content: { padding: 18, paddingBottom: 60, flexGrow: 1 },
+  center: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 100,
+  },
+  errorIcon: { fontSize: 40, marginBottom: 16, textAlign: "center" },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: "700",
+    letterSpacing: -0.3,
+    marginBottom: 6,
+  },
+  emptySub: {
+    fontSize: 13,
+    opacity: 0.5,
+    textAlign: "center",
+    lineHeight: 18,
+    paddingHorizontal: 20,
+  },
+
+  reportContainer: { width: "100%" },
+  metaText: { fontSize: 12, opacity: 0.5, marginBottom: 16, paddingLeft: 4 },
+
   card: {
     borderRadius: 12,
     borderWidth: 1,
-    padding: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
     marginBottom: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
-  cardText: { fontSize: 14, lineHeight: 22 },
+  bulletRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  bullet: {
+    fontSize: 16,
+    lineHeight: 22,
+    marginRight: 8,
+    fontWeight: "bold",
+  },
+  cardText: {
+    flex: 1,
+    fontSize: 14.5,
+    lineHeight: 23,
+    letterSpacing: -0.2,
+  },
 });

@@ -1,10 +1,10 @@
 import PageHeader from "@/components/PageHeader";
+import ReportingButton from "@/components/ReportingButton";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import apiClient from "@/services/apiClient";
 import { getCachedStats, setCachedStats } from "@/services/prefetchService";
 import { Stack, useFocusEffect } from "expo-router";
-import ReportingButton from "@/components/ReportingButton";
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -60,7 +60,9 @@ export default function MonthlyStatisticsScreen() {
 
       const today = new Date();
       const formattedMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
-      const res = await apiClient.get(`/api/stats/monthly?month=${formattedMonth}`);
+      const res = await apiClient.get(
+        `/api/stats/monthly?month=${formattedMonth}`,
+      );
       setData(res.data);
       await setCachedStats("monthly", res.data);
     } catch (e) {
@@ -308,4 +310,16 @@ const styles = StyleSheet.create({
   arrow: { fontSize: 12 },
   chartHolder: { alignItems: "center", marginTop: 10 },
   horizontalScroll: { marginTop: 10, paddingBottom: 20 },
+  reportBtn: {
+    marginVertical: 12,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  reportBtnText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "bold",
+  },
 });

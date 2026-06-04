@@ -29,7 +29,8 @@ export default function SplashScreen() {
 
         const userId = await AsyncStorage.getItem("userId");
         if (token && ip && port) {
-          const resolvedIp = (Platform.OS === "android" && ip === "localhost") ? "10.0.2.2" : ip;
+          const resolvedIp =
+            Platform.OS === "android" && ip === "localhost" ? "10.0.2.2" : ip;
           updateServerSettings(resolvedIp, port, true);
           if (userId) {
             setCurrentUserId(userId);
@@ -41,7 +42,7 @@ export default function SplashScreen() {
         } else {
           router.replace("/login");
         }
-      } catch (e) {
+      } catch {
         router.replace("/login");
       }
     };
