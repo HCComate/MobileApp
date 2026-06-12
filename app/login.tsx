@@ -35,7 +35,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   // Android 에뮬레이터에서 호스트 PC는 10.0.2.2, iOS/Web은 localhost
   const [serverIp, setServerIp] = useState(
-    Platform.OS === "android" ? "10.0.2.2" : "localhost",
+    Platform.OS === "android" ? "192.168.0.6" : "localhost",
   );
   const [serverPort, setServerPort] = useState("8080");
   const [isLoading, setIsLoading] = useState(false);

@@ -105,7 +105,7 @@ export const updateServerSettings = (
   const cleanIp = ip ? ip.trim() : "";
   const cleanPort = port ? port.trim() : "";
 
-  if (success && cleanIp && cleanIp !== "localhost" && cleanIp !== "10.0.2.2") {
+  if (success && cleanIp && cleanIp !== "localhost" && cleanIp !== "192.168.0.6") {
     isServerMode = true;
     CURRENT_SERVER_URL = `http://${cleanIp}:${cleanPort}`;
     console.log("[Network] 실제 서버 모드 전환 완료:", CURRENT_SERVER_URL);

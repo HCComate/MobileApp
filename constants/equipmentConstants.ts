@@ -3,9 +3,9 @@ import { Colors } from "./Colors";
 
 export const STATUS_COLOR: Record<MachineStatus, string> = {
   RUN: "#22C55E",
-  IDLE: "#64748B",
+  IDLE: "#F59E0B",
   ERROR: "#EF4444",
-  STOP: "#F59E0B",
+  STOP: "#64748B",
   STANDBY: "#3B82F6",
   LOCKED: "#7C3AED",
 };
